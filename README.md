@@ -1,5 +1,10 @@
 # Local Speech-to-Text MCP Server
 
+> [!CAUTION]
+> # ⚠️ This project is currently broken
+>
+> I am actively fixing it. Please do not rely on it until this warning is removed.
+
 A high-performance Model Context Protocol (MCP) server providing local speech-to-text transcription using whisper.cpp, optimized for Apple Silicon.
 
 ## 🎯 Features
