@@ -15,13 +15,13 @@ A high-performance Model Context Protocol (MCP) server providing local speech-to
 - **🎵 Universal Audio Support**: Automatic conversion from MP3, M4A, FLAC, and more
 - **📝 Multiple Output Formats**: txt, json, vtt, srt, csv
 - **💾 Low Memory Footprint**: <2GB memory usage
-- **🔧 TypeScript**: Full type safety and modern development
+- **🔧 No Build Step**: Plain JavaScript that runs directly on Node.js
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 24.2+
 - whisper.cpp (`brew install whisper-cpp`)
 - **For audio format conversion**: ffmpeg (`brew install ffmpeg`) - automatically handles MP3, M4A, FLAC, OGG, etc.
 - **For speaker diarization**: Python 3.8+ and HuggingFace token (free)
@@ -39,7 +39,6 @@ A high-performance Model Context Protocol (MCP) server providing local speech-to
 git clone https://github.com/TheAdmiral/local-stt-mcp.git
 cd local-stt-mcp/mcp-server
 npm install
-npm run build
 
 # Download whisper models
 npm run setup:models
@@ -59,7 +58,7 @@ Add to your MCP client configuration:
   "mcpServers": {
     "whisper-mcp": {
       "command": "node",
-      "args": ["path/to/local-stt-mcp/mcp-server/dist/index.js"]
+      "args": ["path/to/local-stt-mcp/mcp-server/src/index.js"]
     }
   }
 }
@@ -90,30 +89,28 @@ See `/benchmarks/` for detailed performance comparisons.
 
 ```
 mcp-server/
-├── src/                    # TypeScript source code
+├── src/                    # JavaScript source code, run directly
+│   ├── index.js           # Server entry point
+│   ├── schemas.js         # Zod schemas for tool options
 │   ├── tools/             # MCP tool implementations
 │   ├── whisper/           # whisper.cpp integration
-│   ├── utils/             # Speaker diarization & utilities
-│   └── types/             # Type definitions
-├── dist/                  # Compiled JavaScript
-└── python/                # Python dependencies
+│   └── utils/             # Speaker diarization & utilities
+├── python/                # Diarization script and Python dependencies
+└── test/                  # Tests (node --test)
 ```
 
 ## 🔧 Development
 
 ```bash
-# Build
-npm run build
-
-# Development mode (watch)
+# Development mode (restarts on changes)
 npm run dev
+
+# Tests
+npm test
 
 # Linting & formatting
 npm run lint
 npm run format
-
-# Type checking
-npm run type-check
 ```
 
 ## 🤝 Contributing

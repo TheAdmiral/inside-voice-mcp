@@ -8,14 +8,14 @@ A Model Context Protocol server that provides local speech-to-text transcription
 - **Apple Silicon Optimized**: Takes advantage of Apple Silicon performance optimizations  
 - **Multiple Models**: Support for tiny, base, small, medium, and large whisper models
 - **Multiple Formats**: Output in txt, vtt, srt, json, or csv formats
-- **TypeScript**: Full type safety and modern development experience
+- **No Build Step**: Plain JavaScript that runs directly on Node.js
 - **Zero Cost**: No subscription fees or API usage costs
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 24.2+
 - whisper.cpp installed via Homebrew
 - At least one whisper model downloaded
 - **For speaker diarization**: Python 3.8+ with pyannote.audio
@@ -31,7 +31,6 @@ brew install whisper-cpp
 git clone https://github.com/TheAdmiral/local-stt-mcp.git
 cd local-stt-mcp/mcp-server
 npm install
-npm run build
 
 # Download base model (recommended starting point)
 mkdir -p ../models
@@ -66,20 +65,19 @@ For speaker diarization functionality, you'll need:
 node test-server.js
 
 # Test with MCP Inspector
-npx @modelcontextprotocol/inspector@latest dist/index.js
+npx @modelcontextprotocol/inspector@latest src/index.js
 ```
 
 ## 🛠️ MCP Tools
 
 ### `version`
-Get server version and build information to verify you're running the latest code.
+Get server version information to verify you're running the latest code.
 
 **Example Response:**
 ```json
 {
   "name": "whisper-mcp-server",
   "version": "1.0.1",
-  "build_timestamp": "2025-05-31T11:18:20.753Z",
   "capabilities": ["audio transcription", "Apple Silicon optimization"],
   "supported_formats": ["wav", "mp3", "m4a", "flac", "ogg"],
   "output_formats": ["txt", "vtt", "srt", "json", "csv"]
@@ -196,7 +194,7 @@ Use the included `.mcp.json` file in the project root:
   "mcpServers": {
     "whisper-mcp": {
       "command": "node", 
-      "args": ["mcp-server/dist/index.js"],
+      "args": ["mcp-server/src/index.js"],
       "cwd": "/path/to/your/local-stt-mcp",
       "env": {},
       "description": "whisper.cpp MCP server for local speech-to-text transcription"
@@ -214,7 +212,7 @@ Add to your MCP client configuration:
   "mcpServers": {
     "whisper-mcp": {
       "command": "node",
-      "args": ["/path/to/whisper-mcp-server/dist/index.js"],
+      "args": ["/path/to/whisper-mcp-server/src/index.js"],
       "env": {}
     }
   }
@@ -223,17 +221,14 @@ Add to your MCP client configuration:
 
 ### Version Management
 
-To ensure you're always testing the latest code:
+To check which version your client is running:
 
 ```bash
 # Check current version (via MCP)
 # Use the 'version' tool in your MCP client
 
-# Update version and rebuild
-node update-version.js
-
-# Manual version update
-npm version patch && npm run build
+# Update the version, then restart your MCP client
+npm version patch
 ```
 
 ### Environment Variables
