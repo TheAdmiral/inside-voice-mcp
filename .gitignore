@@ -4,10 +4,7 @@ mcp-server/node_modules/
 */node_modules/
 
 # Build outputs
-mcp-server/dist/
-dist/
 build/
-*.tsbuildinfo
 
 # Runtime files
 temp/

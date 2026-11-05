@@ -1,0 +1,151 @@
+import { existsSync, readdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { runCommand } from '../utils/run-command.js';
+
+const WHISPER_BINARY = 'whisper-cli';
+const PROJECT_ROOT = join(import.meta.dirname, '../../..');
+const MODELS_DIR = join(PROJECT_ROOT, 'models');
+
+const OUTPUT_FORMAT_FLAGS = {
+  txt: '--output-txt',
+  vtt: '--output-vtt',
+  srt: '--output-srt',
+  json: '--output-json',
+  csv: '--output-csv',
+};
+
+/**
+ * @typedef {{ start: number, end: number, text: string }} Segment
+ * @typedef {{ text: string, segments?: Segment[], language?: string, model_used: string,
+ *   processing_time: number }} TranscriptionResult
+ */
+
+/**
+ * @param {string} audioPath
+ * @param {object} options Validated options, see TranscribeOptionsSchema in schemas.js.
+ * @returns {Promise<TranscriptionResult>}
+ */
+export async function transcribe(audioPath, options) {
+  const startTime = Date.now();
+
+  if (!existsSync(audioPath)) {
+    throw new Error(`Audio file error: ${audioPath} - File does not exist`);
+  }
+
+  const modelPath = join(MODELS_DIR, `ggml-${options.model}.bin`);
+  if (!existsSync(modelPath)) {
+    throw new Error(`Model '${options.model}' not found`);
+  }
+
+  const args = buildWhisperArgs(audioPath, modelPath, options);
+  console.error(`[Whisper] Executing: ${WHISPER_BINARY} ${args.join(' ')}`);
+
+  const result = await runCommand(WHISPER_BINARY, args);
+  if (result.exitCode !== 0) {
+    throw new Error(`Whisper process failed: ${result.stderr}`);
+  }
+
+  const output = await readWhisperOutput(audioPath, result.stdout, options);
+
+  return {
+    ...output,
+    model_used: options.model,
+    processing_time: Date.now() - startTime,
+  };
+}
+
+export function getAvailableModels() {
+  if (!existsSync(MODELS_DIR)) {
+    return [];
+  }
+
+  return readdirSync(MODELS_DIR)
+    .filter((file) => file.endsWith('.bin'))
+    .map((file) => file.replace('ggml-', '').replace('.bin', ''));
+}
+
+export async function checkInstallation() {
+  try {
+    const result = await runCommand(WHISPER_BINARY, ['--help']);
+    const installed = result.exitCode === 0;
+    return {
+      installed,
+      version: installed ? 'whisper.cpp' : undefined,
+      error: installed ? undefined : result.stderr,
+    };
+  } catch (error) {
+    return { installed: false, error: error.message };
+  }
+}
+
+export function buildWhisperArgs(audioPath, modelPath, options) {
+  const args = [
+    '--model',
+    modelPath,
+    '--file',
+    audioPath,
+    '--threads',
+    String(options.threads),
+    '--temperature',
+    String(options.temperature),
+  ];
+
+  if (options.language !== 'auto') {
+    args.push('--language', options.language);
+  }
+
+  if (options.translate) {
+    args.push('--translate');
+  }
+
+  // Word timestamps need the full JSON output, so they override the chosen format.
+  if (options.word_timestamps) {
+    args.push('--output-json-full');
+  } else {
+    args.push(OUTPUT_FORMAT_FLAGS[options.output_format]);
+  }
+
+  if (options.max_len > 0) {
+    args.push('--max-len', String(options.max_len));
+  }
+
+  if (options.split_on_word) {
+    args.push('--split-on-word');
+  }
+
+  args.push('--no-prints');
+
+  return args;
+}
+
+/** Converts whisper.cpp JSON output into text and segments, with times in seconds. */
+export function parseWhisperJson(json) {
+  const entries = json.transcription ?? [];
+
+  const segments = entries
+    .filter((entry) => entry.offsets && entry.text)
+    .map((entry) => ({
+      start: entry.offsets.from / 1000,
+      end: entry.offsets.to / 1000,
+      text: entry.text.trim(),
+    }));
+
+  const text = entries
+    .map((entry) => entry.text)
+    .join('')
+    .trim();
+
+  return { text, segments, language: json.result?.language || 'en' };
+}
+
+async function readWhisperOutput(audioPath, stdout, options) {
+  const writesJsonFile = options.word_timestamps || options.output_format === 'json';
+  if (!writesJsonFile) {
+    return { text: stdout.trim(), language: 'en' };
+  }
+
+  // whisper-cli writes JSON next to the audio file, not to stdout.
+  const jsonText = await readFile(`${audioPath}.json`, 'utf-8');
+  return parseWhisperJson(JSON.parse(jsonText));
+}

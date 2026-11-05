@@ -8,7 +8,11 @@ const client = new Client({ name: 'server-test', version: '0.0.0' });
 
 before(async () => {
   await client.connect(
-    new StdioClientTransport({ command: process.execPath, args: ['dist/index.js'], stderr: 'ignore' })
+    new StdioClientTransport({
+      command: process.execPath,
+      args: ['src/index.js'],
+      stderr: 'ignore',
+    }),
   );
 });
 
@@ -22,7 +26,7 @@ test('lists every tool', async () => {
     'transcribe',
     'transcribe_long',
     'transcribe_with_speakers',
-    'version'
+    'version',
   ]);
 });
 
@@ -33,6 +37,31 @@ test('calls a tool over stdio', async () => {
 
 test('rejects unknown tools with MethodNotFound', async () => {
   await assert.rejects(client.callTool({ name: 'no_such_tool', arguments: {} }), {
-    code: ErrorCode.MethodNotFound
+    code: ErrorCode.MethodNotFound,
   });
+});
+
+test('rejects invalid arguments with InvalidParams', async () => {
+  await assert.rejects(
+    client.callTool({
+      name: 'transcribe',
+      arguments: { audio_path: 'x.wav', options: { model: 'not-a-model' } },
+    }),
+    { code: ErrorCode.InvalidParams },
+  );
+
+  await assert.rejects(client.callTool({ name: 'transcribe', arguments: {} }), {
+    code: ErrorCode.InvalidParams,
+  });
+});
+
+test('publishes the transcribe schema generated from zod', async () => {
+  const { tools } = await client.listTools();
+  const schema = tools.find((tool) => tool.name === 'transcribe').inputSchema;
+
+  assert.deepEqual(schema.required, ['audio_path']);
+  assert.ok(schema.properties.options.properties.model.enum.includes('tiny.en'));
+  assert.ok(schema.properties.options.properties.model.enum.includes('large-v3-turbo'));
+  assert.ok('max_len' in schema.properties.options.properties);
+  assert.ok('split_on_word' in schema.properties.options.properties);
 });

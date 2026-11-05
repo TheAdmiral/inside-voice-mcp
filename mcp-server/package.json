@@ -2,40 +2,40 @@
   "name": "whisper-mcp-server",
   "version": "1.0.3",
   "description": "whisper.cpp MCP server for local speech-to-text transcription",
-  "main": "dist/index.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/index.js",
-    "test": "tsc && node --test test/*.test.js",
-    "lint": "oxlint src",
-    "lint:fix": "oxlint src --fix",
-    "format": "prettier --write src/**/*.ts",
-    "format:check": "prettier --check src/**/*.ts",
-    "type-check": "tsc --noEmit",
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/*.test.js",
+    "lint": "oxlint src test",
+    "lint:fix": "oxlint src test --fix",
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\"",
     "setup:models": "node scripts/setup-models.js",
-    "benchmark": "node scripts/benchmark.js",
-    "clean": "rm -rf dist"
+    "benchmark": "node scripts/benchmark.js"
+  },
+  "engines": {
+    "node": ">=24.2"
   },
   "keywords": [
     "mcp",
     "whisper",
     "speech-to-text",
-    "transcription",
-    "typescript"
+    "transcription"
   ],
   "author": "whisper-mcp-server",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "execa": "^9.6.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
     "oxlint": "^1.91.0",
-    "prettier": "^3.0.0",
-    "typescript": "^7.0.2"
+    "prettier": "^3.0.0"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "printWidth": 100
   }
 }
