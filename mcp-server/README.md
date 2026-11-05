@@ -28,8 +28,8 @@ A Model Context Protocol server that provides local speech-to-text transcription
 brew install whisper-cpp
 
 # Clone and setup
-git clone <repo-url>
-cd whisper-mcp-server
+git clone https://github.com/TheAdmiral/local-stt-mcp.git
+cd local-stt-mcp/mcp-server
 npm install
 npm run build
 
@@ -276,11 +276,14 @@ curl -L -O https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.e
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+This project is being substantially reworked, so please [open an issue](https://github.com/TheAdmiral/local-stt-mcp/issues) to discuss a change before starting on it.
+
+Before submitting a pull request, run these from `mcp-server/`:
+
+```bash
+npm run lint
+npm test
+```
 
 ## 📄 License
 

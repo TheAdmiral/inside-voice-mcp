@@ -31,7 +31,7 @@ A high-performance Model Context Protocol (MCP) server providing local speech-to
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/local-stt-mcp.git
+git clone https://github.com/TheAdmiral/local-stt-mcp.git
 cd local-stt-mcp/mcp-server
 npm install
 npm run build
@@ -113,11 +113,14 @@ npm run type-check
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+This project is being substantially reworked, so please [open an issue](https://github.com/TheAdmiral/local-stt-mcp/issues) to discuss a change before starting on it.
+
+Before submitting a pull request, run these from `mcp-server/`:
+
+```bash
+npm run lint
+npm test
+```
 
 ## 📄 License
 
