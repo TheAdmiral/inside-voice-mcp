@@ -52,7 +52,7 @@ test('maps each output format to its flag', () => {
   }
 });
 
-test('word timestamps override the output format', () => {
+test('word timestamps add the full JSON output to the chosen format', () => {
   const args = buildWhisperArgs(
     'a.wav',
     'm.bin',
@@ -61,7 +61,7 @@ test('word timestamps override the output format', () => {
   );
 
   assert.ok(args.includes('--output-json-full'));
-  assert.ok(!args.includes('--output-srt'));
+  assert.ok(args.includes('--output-srt'));
 });
 
 test('adds optional flags only when they are set', () => {
@@ -208,3 +208,29 @@ for (const output_format of ['srt', 'vtt', 'csv']) {
     assert.equal(result.text, `${output_format} file`);
   });
 }
+
+for (const output_format of ['srt', 'vtt', 'csv']) {
+  test(`word timestamps keep the ${output_format} output and add segments`, async (t) => {
+    const { audioPath } = setUpFakeWhisper(t);
+
+    const result = await transcribe(
+      audioPath,
+      options({ model: 'tiny.en', output_format, word_timestamps: true }),
+    );
+
+    assert.equal(result.text, `${output_format} file`);
+    assert.deepEqual(result.segments, [{ start: 0, end: 1, text: 'hello' }]);
+  });
+}
+
+test('word timestamps with json output still return the parsed JSON', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+
+  const result = await transcribe(
+    audioPath,
+    options({ model: 'tiny.en', output_format: 'json', word_timestamps: true }),
+  );
+
+  assert.equal(result.text, 'hello');
+  assert.deepEqual(result.segments, [{ start: 0, end: 1, text: 'hello' }]);
+});

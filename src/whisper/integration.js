@@ -121,11 +121,11 @@ export function buildWhisperArgs(audioPath, modelPath, outputBase, options) {
     args.push('--translate');
   }
 
-  // Word timestamps need the full JSON output, so they override the chosen format.
+  args.push(OUTPUT_FORMAT_FLAGS[options.output_format]);
+
+  // Word timestamps need the full JSON output, which is written alongside the chosen format.
   if (options.word_timestamps) {
     args.push('--output-json-full');
-  } else {
-    args.push(OUTPUT_FORMAT_FLAGS[options.output_format]);
   }
 
   if (options.max_len > 0) {
@@ -162,16 +162,19 @@ export function parseWhisperJson(json) {
 }
 
 async function readWhisperOutput(outputBase, stdout, options) {
-  if (options.word_timestamps || options.output_format === 'json') {
-    const jsonText = await readFile(`${outputBase}.json`, 'utf-8');
-    return parseWhisperJson(JSON.parse(jsonText));
+  const { output_format, word_timestamps } = options;
+
+  const parsedJson =
+    output_format === 'json' || word_timestamps
+      ? parseWhisperJson(JSON.parse(await readFile(`${outputBase}.json`, 'utf-8')))
+      : { language: 'en' };
+
+  if (output_format === 'json') {
+    return parsedJson;
   }
 
-  if (options.output_format === 'txt') {
-    return { text: stdout.trim(), language: 'en' };
-  }
-
-  // stdout is always timestamped text, so the requested format only exists in the file.
-  const text = await readFile(`${outputBase}.${options.output_format}`, 'utf-8');
-  return { text: text.trim(), language: 'en' };
+  // stdout is always timestamped text, so other formats only exist in their output file.
+  const text =
+    output_format === 'txt' ? stdout : await readFile(`${outputBase}.${output_format}`, 'utf-8');
+  return { ...parsedJson, text: text.trim() };
 }
