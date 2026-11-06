@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCommand } from '../utils/run-command.js';
 
@@ -43,21 +43,29 @@ export async function transcribe(audioPath, options) {
     throw new Error(`Model '${options.model}' not found in ${modelsDir}`);
   }
 
-  const args = buildWhisperArgs(audioPath, modelPath, options);
-  console.error(`[Whisper] Executing: ${WHISPER_BINARY} ${args.join(' ')}`);
+  // whisper-cli writes its output files to disk, so keep them away from the user's audio.
+  const outputDir = await mkdtemp(join(tmpdir(), 'inside-voice-whisper-'));
+  const outputBase = join(outputDir, 'output');
 
-  const result = await runCommand(WHISPER_BINARY, args);
-  if (result.exitCode !== 0) {
-    throw new Error(`Whisper process failed: ${result.stderr}`);
+  try {
+    const args = buildWhisperArgs(audioPath, modelPath, outputBase, options);
+    console.error(`[Whisper] Executing: ${WHISPER_BINARY} ${args.join(' ')}`);
+
+    const result = await runCommand(WHISPER_BINARY, args);
+    if (result.exitCode !== 0) {
+      throw new Error(`Whisper process failed: ${result.stderr}`);
+    }
+
+    const output = await readWhisperOutput(outputBase, result.stdout, options);
+
+    return {
+      ...output,
+      model_used: options.model,
+      processing_time: Date.now() - startTime,
+    };
+  } finally {
+    await rm(outputDir, { recursive: true, force: true });
   }
-
-  const output = await readWhisperOutput(audioPath, result.stdout, options);
-
-  return {
-    ...output,
-    model_used: options.model,
-    processing_time: Date.now() - startTime,
-  };
 }
 
 export function getAvailableModels() {
@@ -85,12 +93,20 @@ export async function checkInstallation() {
   }
 }
 
-export function buildWhisperArgs(audioPath, modelPath, options) {
+/**
+ * @param {string} audioPath
+ * @param {string} modelPath
+ * @param {string} outputBase Output file path without its extension.
+ * @param {object} options Validated options, see TranscribeOptionsSchema in schemas.js.
+ */
+export function buildWhisperArgs(audioPath, modelPath, outputBase, options) {
   const args = [
     '--model',
     modelPath,
     '--file',
     audioPath,
+    '--output-file',
+    outputBase,
     '--threads',
     String(options.threads),
     '--temperature',
@@ -145,13 +161,13 @@ export function parseWhisperJson(json) {
   return { text, segments, language: json.result?.language || 'en' };
 }
 
-async function readWhisperOutput(audioPath, stdout, options) {
+async function readWhisperOutput(outputBase, stdout, options) {
   const writesJsonFile = options.word_timestamps || options.output_format === 'json';
   if (!writesJsonFile) {
     return { text: stdout.trim(), language: 'en' };
   }
 
-  // whisper-cli writes JSON next to the audio file, not to stdout.
-  const jsonText = await readFile(`${audioPath}.json`, 'utf-8');
+  // whisper-cli writes JSON to the output file, not to stdout.
+  const jsonText = await readFile(`${outputBase}.json`, 'utf-8');
   return parseWhisperJson(JSON.parse(jsonText));
 }

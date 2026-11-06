@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -9,16 +17,19 @@ import {
   getAvailableModels,
   getModelsDir,
   parseWhisperJson,
+  transcribe,
 } from '../src/whisper/integration.js';
 
 const options = (overrides = {}) => TranscribeOptionsSchema.parse(overrides);
 
 test('builds the default arguments', () => {
-  assert.deepEqual(buildWhisperArgs('a.wav', 'm.bin', options()), [
+  assert.deepEqual(buildWhisperArgs('a.wav', 'm.bin', 'out', options()), [
     '--model',
     'm.bin',
     '--file',
     'a.wav',
+    '--output-file',
+    'out',
     '--threads',
     '4',
     '--temperature',
@@ -36,7 +47,7 @@ test('maps each output format to its flag', () => {
     ['json', '--output-json'],
     ['csv', '--output-csv'],
   ]) {
-    const args = buildWhisperArgs('a.wav', 'm.bin', options({ output_format: format }));
+    const args = buildWhisperArgs('a.wav', 'm.bin', 'out', options({ output_format: format }));
     assert.ok(args.includes(flag), format);
   }
 });
@@ -45,6 +56,7 @@ test('word timestamps override the output format', () => {
   const args = buildWhisperArgs(
     'a.wav',
     'm.bin',
+    'out',
     options({ output_format: 'srt', word_timestamps: true }),
   );
 
@@ -56,6 +68,7 @@ test('adds optional flags only when they are set', () => {
   const args = buildWhisperArgs(
     'a.wav',
     'm.bin',
+    'out',
     options({ language: 'sv', translate: true, max_len: 40, split_on_word: true }),
   );
 
@@ -69,7 +82,7 @@ test('adds optional flags only when they are set', () => {
     '40',
   ]);
   assert.ok(args.includes('--split-on-word'));
-  assert.ok(!buildWhisperArgs('a.wav', 'm.bin', options()).includes('--language'));
+  assert.ok(!buildWhisperArgs('a.wav', 'm.bin', 'out', options()).includes('--language'));
 });
 
 test('parses whisper JSON, converting milliseconds to seconds', () => {
@@ -123,4 +136,64 @@ test('a missing models directory gives no models', (t) => {
   process.env.WHISPER_MODELS_PATH = join(tmpdir(), 'inside-voice-no-such-directory');
 
   assert.deepEqual(getAvailableModels(), []);
+});
+
+/** Puts a fake whisper-cli on the PATH that writes output files and records where it put them. */
+function setUpFakeWhisper(t, { exitCode = 0 } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-fake-whisper-'));
+  const originalPath = process.env.PATH;
+  t.after(() => {
+    process.env.PATH = originalPath;
+    delete process.env.WHISPER_MODELS_PATH;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const recordPath = join(dir, 'output-base');
+  const whisperPath = join(dir, 'whisper-cli');
+  writeFileSync(
+    whisperPath,
+    `#!/bin/sh
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--output-file" ]; then out="$2"; fi
+  shift
+done
+printf '%s' "$out" > "${recordPath}"
+echo '{"transcription":[{"text":" hello","offsets":{"from":0,"to":1000}}]}' > "$out.json"
+echo hello > "$out.txt"
+echo hello
+exit ${exitCode}
+`,
+  );
+  chmodSync(whisperPath, 0o755);
+  process.env.PATH = `${dir}:${originalPath}`;
+
+  process.env.WHISPER_MODELS_PATH = dir;
+  writeFileSync(join(dir, 'ggml-tiny.en.bin'), '');
+
+  const audioDir = mkdtempSync(join(dir, 'audio-'));
+  const audioPath = join(audioDir, 'sample.wav');
+  writeFileSync(audioPath, '');
+
+  return { audioDir, audioPath, recordPath };
+}
+
+for (const output_format of ['txt', 'json']) {
+  test(`${output_format} transcription leaves no files behind`, async (t) => {
+    const { audioDir, audioPath, recordPath } = setUpFakeWhisper(t);
+
+    const result = await transcribe(audioPath, options({ model: 'tiny.en', output_format }));
+
+    assert.equal(result.text, 'hello');
+    assert.deepEqual(readdirSync(audioDir), ['sample.wav']);
+    assert.equal(existsSync(`${readFileSync(recordPath, 'utf-8')}.txt`), false);
+  });
+}
+
+test('a failed transcription leaves no files behind', async (t) => {
+  const { audioDir, audioPath, recordPath } = setUpFakeWhisper(t, { exitCode: 1 });
+
+  await assert.rejects(transcribe(audioPath, options({ model: 'tiny.en' })), /Whisper process/);
+
+  assert.deepEqual(readdirSync(audioDir), ['sample.wav']);
+  assert.equal(existsSync(`${readFileSync(recordPath, 'utf-8')}.txt`), false);
 });
