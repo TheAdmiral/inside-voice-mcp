@@ -1,9 +1,9 @@
-import { transcribeWithSpeakersTool } from './src/tools/transcribe-with-speakers.js';
-import { resolve } from 'path';
+import { join } from 'node:path';
+import { transcribeWithSpeakersTool } from '../src/tools/transcribe-with-speakers.js';
 
 async function testDiarization() {
   try {
-    const audioPath = resolve('../input/sample_meeting_40_seconds.wav');
+    const audioPath = join(import.meta.dirname, '../test/fixtures/sample_meeting_40_seconds.wav');
     console.log('Testing speaker diarization with:', audioPath);
 
     const result = await transcribeWithSpeakersTool.handler({

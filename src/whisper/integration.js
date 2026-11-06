@@ -1,11 +1,10 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { runCommand } from '../utils/run-command.js';
 
 const WHISPER_BINARY = 'whisper-cli';
-const PROJECT_ROOT = join(import.meta.dirname, '../../..');
-const MODELS_DIR = join(PROJECT_ROOT, 'models');
 
 const OUTPUT_FORMAT_FLAGS = {
   txt: '--output-txt',
@@ -21,6 +20,11 @@ const OUTPUT_FORMAT_FLAGS = {
  *   processing_time: number }} TranscriptionResult
  */
 
+/** Returns the directory whisper models are stored in. */
+export function getModelsDir() {
+  return process.env.WHISPER_MODELS_PATH || join(homedir(), '.inside-voice-mcp', 'models');
+}
+
 /**
  * @param {string} audioPath
  * @param {object} options Validated options, see TranscribeOptionsSchema in schemas.js.
@@ -33,9 +37,10 @@ export async function transcribe(audioPath, options) {
     throw new Error(`Audio file error: ${audioPath} - File does not exist`);
   }
 
-  const modelPath = join(MODELS_DIR, `ggml-${options.model}.bin`);
+  const modelsDir = getModelsDir();
+  const modelPath = join(modelsDir, `ggml-${options.model}.bin`);
   if (!existsSync(modelPath)) {
-    throw new Error(`Model '${options.model}' not found`);
+    throw new Error(`Model '${options.model}' not found in ${modelsDir}`);
   }
 
   const args = buildWhisperArgs(audioPath, modelPath, options);
@@ -56,11 +61,12 @@ export async function transcribe(audioPath, options) {
 }
 
 export function getAvailableModels() {
-  if (!existsSync(MODELS_DIR)) {
+  const modelsDir = getModelsDir();
+  if (!existsSync(modelsDir)) {
     return [];
   }
 
-  return readdirSync(MODELS_DIR)
+  return readdirSync(modelsDir)
     .filter((file) => file.endsWith('.bin'))
     .map((file) => file.replace('ggml-', '').replace('.bin', ''));
 }

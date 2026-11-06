@@ -1,6 +1,6 @@
 import { arch, cpus, platform } from 'node:os';
 import { z } from 'zod';
-import { checkInstallation, getAvailableModels } from '../whisper/integration.js';
+import { checkInstallation, getAvailableModels, getModelsDir } from '../whisper/integration.js';
 import { jsonResult } from './tool-result.js';
 
 async function handler() {
@@ -11,6 +11,7 @@ async function handler() {
     const result = {
       whisper_installed: installation.installed,
       whisper_version: installation.version,
+      models_directory: getModelsDir(),
       models_available: availableModels,
       recommended_model: determineRecommendedModel(availableModels),
       system_info: {
@@ -75,7 +76,7 @@ function generateDiagnostics(result, installationError) {
     }
     diagnostics.issues.push('No whisper models found');
     diagnostics.recommendations.push(
-      'Download models: npm run setup:models or manually download to models/ directory',
+      `Download models: npm run setup:models or manually download to ${result.models_directory}`,
     );
   }
 

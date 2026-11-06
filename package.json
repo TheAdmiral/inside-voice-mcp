@@ -8,12 +8,11 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test test/*.test.js",
-    "lint": "oxlint src test",
-    "lint:fix": "oxlint src test --fix",
-    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\"",
-    "setup:models": "node scripts/setup-models.js",
-    "benchmark": "node scripts/benchmark.js"
+    "lint": "oxlint src test scripts",
+    "lint:fix": "oxlint src test scripts --fix",
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
+    "setup:models": "node scripts/setup-models.js"
   },
   "engines": {
     "node": ">=24.2"

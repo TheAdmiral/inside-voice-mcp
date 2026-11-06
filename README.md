@@ -37,17 +37,33 @@ Inside Voice is a high-performance Model Context Protocol (MCP) server providing
 
 ```bash
 git clone https://github.com/TheAdmiral/inside-voice-mcp.git
-cd inside-voice-mcp/mcp-server
+cd inside-voice-mcp
 npm install
 
-# Download whisper models
+# Download the base.en model to ~/.inside-voice-mcp/models
 npm run setup:models
 
-# For speaker diarization, set HuggingFace token
-export HF_TOKEN="your_token_here"  # Get free token from huggingface.co
+# Or name the models you want
+npm run setup:models -- tiny.en small.en
 ```
 
-**Speaker Diarization Note**: Requires HuggingFace account and accepting [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) license.
+### Speaker Diarization Setup (Optional)
+
+Basic transcription works without any of this. Only speaker diarization needs it.
+
+1. Install the Python dependencies:
+   ```bash
+   pip install -r python/requirements.txt
+   ```
+
+2. Get a free HuggingFace token:
+   - Create an account at [huggingface.co](https://huggingface.co)
+   - Generate a token at [Settings > Access Tokens](https://huggingface.co/settings/tokens)
+   - Accept the license for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+   - Set the environment variable:
+     ```bash
+     export HF_TOKEN="your_token_here"
+     ```
 
 ### MCP Client Configuration
 
@@ -58,11 +74,17 @@ Add to your MCP client configuration:
   "mcpServers": {
     "inside-voice": {
       "command": "node",
-      "args": ["path/to/inside-voice-mcp/mcp-server/src/index.js"]
+      "args": ["/path/to/inside-voice-mcp/src/index.js"]
     }
   }
 }
 ```
+
+### Environment Variables
+
+- `WHISPER_MODELS_PATH`: Absolute path to your whisper models (default: `~/.inside-voice-mcp/models`)
+- `PYTHON_EXECUTABLE`: Python to use for speaker diarization (default: the first one found that has pyannote.audio)
+- `HF_TOKEN`: HuggingFace token for speaker diarization
 
 ## 🛠️ Available Tools
 
@@ -75,6 +97,30 @@ Add to your MCP client configuration:
 | `health_check` | System diagnostics |
 | `version` | Server version information |
 
+### `transcribe` Parameters
+
+- `audio_path` (string): Path to audio file
+- `options` (object, optional):
+  - `model` (string): Model to use (default: 'base.en')
+  - `language` (string): Language code (default: 'auto')
+  - `output_format` (string): Output format - txt, vtt, srt, json, csv (default: 'txt')
+  - `temperature` (number): Sampling temperature 0-1 (default: 0)
+  - `threads` (number): CPU threads to use (default: 4)
+  - `translate` (boolean): Translate to English (default: false)
+  - `word_timestamps` (boolean): Include word-level timestamps (default: false)
+
+**Example:**
+```json
+{
+  "audio_path": "/path/to/audio.mp3",
+  "options": {
+    "model": "base.en",
+    "output_format": "json",
+    "word_timestamps": true
+  }
+}
+```
+
 ## 📊 Performance
 
 **Apple Silicon Benchmarks:**
@@ -83,12 +129,19 @@ Add to your MCP client configuration:
 - **GPU Acceleration**: ✅ Apple Neural Engine
 - **Setup**: Medium complexity but superior performance
 
-See `/benchmarks/` for detailed performance comparisons.
+> **Disclaimer**: Benchmarks conducted with our specific configuration on Apple Silicon (M1). Your mileage may vary depending on hardware, audio characteristics, and parameter tuning.
+
+### Model Comparison
+
+| Model | Size | Speed | Accuracy | Best For |
+|-------|------|-------|----------|----------|
+| tiny.en | 39MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Quick transcription |
+| base.en | 142MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Balanced performance |
+| small.en | 488MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | High accuracy |
 
 ## 🏗️ Project Structure
 
 ```
-mcp-server/
 ├── src/                    # JavaScript source code, run directly
 │   ├── index.js           # Server entry point
 │   ├── schemas.js         # Zod schemas for tool options
@@ -96,8 +149,12 @@ mcp-server/
 │   ├── whisper/           # whisper.cpp integration
 │   └── utils/             # Speaker diarization & utilities
 ├── python/                # Diarization script and Python dependencies
+├── scripts/               # Model download and manual smoke test
 └── test/                  # Tests (node --test)
+    └── fixtures/          # Sample audio
 ```
+
+Whisper models are stored outside the repository, in `~/.inside-voice-mcp/models`.
 
 ## 🔧 Development
 
@@ -111,13 +168,34 @@ npm test
 # Linting & formatting
 npm run lint
 npm run format
+
+# Try the server with MCP Inspector
+npx @modelcontextprotocol/inspector@latest node src/index.js
+
+# End-to-end diarization check (needs the diarization setup and the base.en model)
+node scripts/smoke-diarization.js
 ```
+
+## 🔍 Troubleshooting
+
+**whisper.cpp not found:**
+```bash
+brew install whisper-cpp
+which whisper-cli
+```
+
+**No models found:** run `npm run setup:models`. The `health_check` tool shows which directory the server is looking in.
+
+**Performance issues:**
+- Use 4 threads on Apple Silicon for optimal performance
+- Ensure adequate memory (2GB+ free)
+- Try smaller models for faster processing
 
 ## 🤝 Contributing
 
 This project is being substantially reworked, so please [open an issue](https://github.com/TheAdmiral/inside-voice-mcp/issues) to discuss a change before starting on it.
 
-Before submitting a pull request, run these from `mcp-server/`:
+Before submitting a pull request, run these:
 
 ```bash
 npm run lint

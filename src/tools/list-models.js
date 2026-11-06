@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getAvailableModels } from '../whisper/integration.js';
+import { getAvailableModels, getModelsDir } from '../whisper/integration.js';
 import { jsonResult } from './tool-result.js';
 
 // Ratings go from 1 to 5. For speed 5 is fastest, for accuracy 5 is most accurate.
@@ -83,7 +83,7 @@ async function handler() {
     download_instructions: {
       base_en:
         'curl -L -O https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
-      models_directory: 'Place models in: models/ directory',
+      models_directory: `Place models in: ${getModelsDir()}`,
     },
   });
 }

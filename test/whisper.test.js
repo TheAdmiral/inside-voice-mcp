@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { TranscribeOptionsSchema } from '../src/schemas.js';
-import { buildWhisperArgs, parseWhisperJson } from '../src/whisper/integration.js';
+import {
+  buildWhisperArgs,
+  getAvailableModels,
+  getModelsDir,
+  parseWhisperJson,
+} from '../src/whisper/integration.js';
 
 const options = (overrides = {}) => TranscribeOptionsSchema.parse(overrides);
 
@@ -84,4 +92,35 @@ test('parses whisper JSON, converting milliseconds to seconds', () => {
 
 test('empty whisper JSON gives empty text and English', () => {
   assert.deepEqual(parseWhisperJson({}), { text: '', segments: [], language: 'en' });
+});
+
+test('models live in the home directory by default', (t) => {
+  t.after(() => {
+    delete process.env.WHISPER_MODELS_PATH;
+  });
+  delete process.env.WHISPER_MODELS_PATH;
+
+  assert.equal(getModelsDir(), join(homedir(), '.inside-voice-mcp', 'models'));
+});
+
+test('WHISPER_MODELS_PATH overrides the models directory', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-models-'));
+  t.after(() => {
+    delete process.env.WHISPER_MODELS_PATH;
+    rmSync(dir, { recursive: true, force: true });
+  });
+  process.env.WHISPER_MODELS_PATH = dir;
+  writeFileSync(join(dir, 'ggml-tiny.en.bin'), '');
+
+  assert.equal(getModelsDir(), dir);
+  assert.deepEqual(getAvailableModels(), ['tiny.en']);
+});
+
+test('a missing models directory gives no models', (t) => {
+  t.after(() => {
+    delete process.env.WHISPER_MODELS_PATH;
+  });
+  process.env.WHISPER_MODELS_PATH = join(tmpdir(), 'inside-voice-no-such-directory');
+
+  assert.deepEqual(getAvailableModels(), []);
 });
