@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-mcp-server/node_modules/
 */node_modules/
 
 # Build outputs
@@ -75,9 +74,6 @@ venv.bak/
 # Private development files
 LLM-*/
 CLAUDE.md
-benchmarks/whisperx-env/
-benchmarks/*_env/
-benchmarks/whisperx-*/
 *-private/
 *-dev/
 *_private/
@@ -95,9 +91,9 @@ benchmarks/whisperx-*/
 *.au
 *.ra
 # Allow only specific sample files
-!input/sample_*.wav
-!input/sample_*.mp3
-!input/test_*.wav
+!test/fixtures/sample_*.wav
+!test/fixtures/sample_*.mp3
+!test/fixtures/test_*.wav
 
 # Video files (just in case)
 *.mp4
@@ -114,8 +110,6 @@ benchmarks/whisperx-*/
 *.tar.gz
 *.rar
 *.7z
-!models/*.zip
-!models/*.tar.gz
 
 # Backup files
 *.bak
@@ -132,8 +126,7 @@ benchmarks/whisperx-*/
 *call*
 *conversation*
 # Allow approved sample files
-!input/sample_*
-!benchmarks/*
+!test/fixtures/sample_*
 
 # Database files
 *.db
