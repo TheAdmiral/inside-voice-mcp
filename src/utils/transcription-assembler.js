@@ -1,4 +1,4 @@
-import { formatCsv, formatSrt, formatVtt } from './subtitles.js';
+import { formatCsv, formatSrt, formatTimestampedText, formatVtt } from './subtitles.js';
 
 /**
  * @typedef {import('../whisper/integration.js').TranscriptionResult} TranscriptionResult
@@ -9,16 +9,11 @@ import { formatCsv, formatSrt, formatVtt } from './subtitles.js';
 /**
  * Joins the transcriptions of overlapping audio chunks into one transcription.
  * @param {ChunkTranscription[]} chunks `startOffset` is in seconds.
- * @param {{ overlapSeconds?: number, removeOverlapDuplicates?: boolean,
- *   preserveTimestamps?: boolean }} options
+ * @param {{ overlapSeconds?: number, removeOverlapDuplicates?: boolean }} options
  * @returns {TranscriptionResult}
  */
 export function assembleTranscriptions(chunks, options = {}) {
-  const {
-    overlapSeconds = 30,
-    removeOverlapDuplicates = true,
-    preserveTimestamps = true,
-  } = options;
+  const { overlapSeconds = 30, removeOverlapDuplicates = true } = options;
 
   if (chunks.length === 0) {
     return { text: '', model_used: 'base.en', processing_time: 0 };
@@ -38,7 +33,7 @@ export function assembleTranscriptions(chunks, options = {}) {
     const isFirstChunk = index === 0;
     totalProcessingTime += chunk.result.processing_time;
 
-    if (preserveTimestamps && chunk.result.segments) {
+    if (chunk.result.segments) {
       const shiftedSegments = shiftSegments(chunk.result.segments, chunk.startOffset);
 
       if (removeOverlapDuplicates && !isFirstChunk) {
@@ -52,10 +47,7 @@ export function assembleTranscriptions(chunks, options = {}) {
       }
     }
 
-    let chunkText = chunk.result.text;
-    if (removeOverlapDuplicates && !isFirstChunk) {
-      chunkText = removeOverlapText(chunkText);
-    }
+    const chunkText = chunk.result.text;
 
     const needsSpace =
       !isFirstChunk &&
@@ -70,8 +62,8 @@ export function assembleTranscriptions(chunks, options = {}) {
     assembledText += chunkText;
   }
 
-  // Segments have had their overlap removed exactly, so prefer them to the text heuristic.
-  const hasSegments = preserveTimestamps && assembledSegments.length > 0;
+  // Segments have had their overlap removed, so prefer them to the joined chunk text.
+  const hasSegments = assembledSegments.length > 0;
 
   const assembledResult = {
     text: hasSegments
@@ -103,7 +95,7 @@ export function formatOutput(result, format) {
     case 'json':
       return JSON.stringify(result, null, 2);
     default:
-      return result.text;
+      return cues.length === 0 ? result.text : formatTimestampedText(cues);
   }
 }
 
@@ -134,15 +126,4 @@ function joinAtOverlapMidpoint(assembledSegments, newSegments, cutoffTime) {
   }
 
   assembledSegments.push(...keptSegments);
-}
-
-// Plain text has no timestamps, so this is a rough heuristic: drop the first few lines.
-function removeOverlapText(text) {
-  const lines = text.split('\n').filter((line) => line.trim());
-  if (lines.length <= 1) {
-    return text;
-  }
-
-  const linesToRemove = Math.min(2, Math.floor(lines.length * 0.1));
-  return lines.slice(linesToRemove).join('\n');
 }

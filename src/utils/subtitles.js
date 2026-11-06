@@ -33,6 +33,16 @@ export function formatSrt(cues) {
 }
 
 /**
+ * Matches whisper-cli's terminal output, which is what `transcribe` returns for txt.
+ * @param {{ start: number, end: number, text: string }[]} cues
+ */
+export function formatTimestampedText(cues) {
+  return cues
+    .map((cue) => `[${formatTimestamp(cue.start)} --> ${formatTimestamp(cue.end)}]   ${cue.text}`)
+    .join('\n');
+}
+
+/**
  * Matches whisper-cli's CSV output, with times in milliseconds.
  * @param {{ start: number, end: number, text: string }[]} cues
  */

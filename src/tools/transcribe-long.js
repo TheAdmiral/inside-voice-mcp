@@ -63,9 +63,8 @@ async function handler(args) {
       ...chunks.map((chunk) => chunk.path).filter((path) => path !== processedAudioPath),
     );
 
-    // Every format except txt is built from segments, and only JSON output has them.
-    const wantsTimestamps = options.word_timestamps || options.output_format !== 'txt';
-    const chunkOptions = wantsTimestamps ? { ...options, output_format: 'json' } : options;
+    // Every format is built from the joined segments, and only JSON output has them.
+    const chunkOptions = { ...options, output_format: 'json' };
 
     const chunkTranscriptions = [];
 
@@ -83,7 +82,6 @@ async function handler(args) {
     const assembledResult = assembleTranscriptions(chunkTranscriptions, {
       overlapSeconds: overlap_seconds,
       removeOverlapDuplicates: true,
-      preserveTimestamps: wantsTimestamps,
     });
 
     progress('Transcription completed successfully!');

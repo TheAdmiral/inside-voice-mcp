@@ -45,18 +45,6 @@ test('no chunks gives an empty result', () => {
   assert.equal(assembleTranscriptions([]).text, '');
 });
 
-test('leaves segments out when timestamps are not wanted', () => {
-  const result = assembleTranscriptions(
-    [
-      chunk(0, 0, 'A.', [{ start: 0, end: 1, text: 'A.' }]),
-      chunk(1, 10, 'B.', [{ start: 0, end: 1, text: 'B.' }]),
-    ],
-    { preserveTimestamps: false },
-  );
-
-  assert.equal(result.segments, undefined);
-});
-
 test('formats output per format', () => {
   const result = {
     text: 'Hello world.',
@@ -65,7 +53,7 @@ test('formats output per format', () => {
     processing_time: 1,
   };
 
-  assert.equal(formatOutput(result, 'txt'), 'Hello world.');
+  assert.equal(formatOutput(result, 'txt'), '[00:00:00.000 --> 00:00:02.000]   Hello world.');
   assert.equal(formatOutput(result, 'csv'), 'start,end,text\n0,2000,"Hello world."\n');
   assert.equal(
     formatOutput(result, 'vtt'),
@@ -121,4 +109,23 @@ test('trims a cue that runs into the next chunk', () => {
     { start: 53, end: 55.5, text: 'A' },
     { start: 55.5, end: 58, text: 'B' },
   ]);
+});
+
+test('txt output from several chunks uses file-relative times', () => {
+  const result = assembleTranscriptions(
+    [
+      chunk(0, 0, 'A', [{ start: 0, end: 2, text: 'A' }]),
+      chunk(1, 50, 'B', [{ start: 20, end: 22, text: 'B' }]),
+    ],
+    { overlapSeconds: 10 },
+  );
+
+  assert.equal(
+    formatOutput(result, 'txt'),
+    '[00:00:00.000 --> 00:00:02.000]   A\n[00:01:10.000 --> 00:01:12.000]   B',
+  );
+});
+
+test('txt output without segments is the plain text', () => {
+  assert.equal(formatOutput({ text: 'Hello.' }, 'txt'), 'Hello.');
 });
