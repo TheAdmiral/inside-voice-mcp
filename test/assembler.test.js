@@ -81,3 +81,44 @@ test('formats output without segments', () => {
   assert.equal(formatOutput(result, 'vtt'), 'WEBVTT\n\nHello.');
   assert.equal(formatOutput(result, 'srt'), 'Hello.');
 });
+
+test('keeps one copy of the overlap, cutting at its midpoint', () => {
+  const result = assembleTranscriptions(
+    [
+      chunk(0, 0, 'A B C', [
+        { start: 0, end: 48, text: 'A' },
+        { start: 52, end: 54, text: 'B' },
+        { start: 56, end: 60, text: 'C (cut off)' },
+      ]),
+      chunk(1, 50, 'B C D', [
+        { start: 2, end: 4, text: 'B' },
+        { start: 6, end: 9, text: 'C' },
+        { start: 12, end: 15, text: 'D' },
+      ]),
+    ],
+    { overlapSeconds: 10 },
+  );
+
+  assert.deepEqual(result.segments, [
+    { start: 0, end: 48, text: 'A' },
+    { start: 52, end: 54, text: 'B' },
+    { start: 56, end: 59, text: 'C' },
+    { start: 62, end: 65, text: 'D' },
+  ]);
+  assert.equal(result.text, 'A B C D');
+});
+
+test('trims a cue that runs into the next chunk', () => {
+  const result = assembleTranscriptions(
+    [
+      chunk(0, 0, 'A', [{ start: 53, end: 56, text: 'A' }]),
+      chunk(1, 50, 'B', [{ start: 5.5, end: 8, text: 'B' }]),
+    ],
+    { overlapSeconds: 10 },
+  );
+
+  assert.deepEqual(result.segments, [
+    { start: 53, end: 55.5, text: 'A' },
+    { start: 55.5, end: 58, text: 'B' },
+  ]);
+});

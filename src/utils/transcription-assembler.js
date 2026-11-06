@@ -42,8 +42,10 @@ export function assembleTranscriptions(chunks, options = {}) {
       const shiftedSegments = shiftSegments(chunk.result.segments, chunk.startOffset);
 
       if (removeOverlapDuplicates && !isFirstChunk) {
-        assembledSegments.push(
-          ...removeOverlapSegments(shiftedSegments, assembledSegments, overlapSeconds),
+        joinAtOverlapMidpoint(
+          assembledSegments,
+          shiftedSegments,
+          chunk.startOffset + overlapSeconds / 2,
         );
       } else {
         assembledSegments.push(...shiftedSegments);
@@ -68,14 +70,19 @@ export function assembleTranscriptions(chunks, options = {}) {
     assembledText += chunkText;
   }
 
+  // Segments have had their overlap removed exactly, so prefer them to the text heuristic.
+  const hasSegments = preserveTimestamps && assembledSegments.length > 0;
+
   const assembledResult = {
-    text: assembledText.trim(),
+    text: hasSegments
+      ? assembledSegments.map((segment) => segment.text).join(' ')
+      : assembledText.trim(),
     model_used: sortedChunks[0].result.model_used,
     processing_time: totalProcessingTime,
     language: sortedChunks[0].result.language,
   };
 
-  if (preserveTimestamps && assembledSegments.length > 0) {
+  if (hasSegments) {
     assembledResult.segments = assembledSegments;
   }
 
@@ -109,23 +116,24 @@ function shiftSegments(segments, startOffset) {
   }));
 }
 
-function removeOverlapSegments(newSegments, existingSegments, overlapSeconds) {
-  if (existingSegments.length === 0) {
-    return newSegments;
+/**
+ * Both chunks cover the overlap, so one copy of it has to go. Cutting at the midpoint keeps
+ * each chunk's audio away from its cut-off edge, where whisper is least reliable.
+ */
+function joinAtOverlapMidpoint(assembledSegments, newSegments, cutoffTime) {
+  while (assembledSegments.at(-1)?.start >= cutoffTime) {
+    assembledSegments.pop();
   }
 
-  const lastExistingTime = existingSegments.at(-1).end;
-  const overlapCutoffTime = lastExistingTime - overlapSeconds;
+  const keptSegments = newSegments.filter((segment) => segment.start >= cutoffTime);
 
-  const firstNonOverlapIndex = newSegments.findIndex(
-    (segment) => segment.start >= overlapCutoffTime,
-  );
-
-  if (firstNonOverlapIndex === -1) {
-    return [];
+  // The chunks can disagree slightly on timing, and cues must not overlap.
+  const lastSegment = assembledSegments.at(-1);
+  if (lastSegment && keptSegments.length > 0) {
+    lastSegment.end = Math.min(lastSegment.end, keptSegments[0].start);
   }
 
-  return newSegments.slice(firstNonOverlapIndex);
+  assembledSegments.push(...keptSegments);
 }
 
 // Plain text has no timestamps, so this is a rough heuristic: drop the first few lines.
