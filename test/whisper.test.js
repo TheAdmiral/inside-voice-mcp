@@ -160,6 +160,7 @@ done
 printf '%s' "$out" > "${recordPath}"
 echo '{"transcription":[{"text":" hello","offsets":{"from":0,"to":1000}}]}' > "$out.json"
 echo hello > "$out.txt"
+for format in srt vtt csv; do echo "$format file" > "$out.$format"; done
 echo hello
 exit ${exitCode}
 `,
@@ -197,3 +198,13 @@ test('a failed transcription leaves no files behind', async (t) => {
   assert.deepEqual(readdirSync(audioDir), ['sample.wav']);
   assert.equal(existsSync(`${readFileSync(recordPath, 'utf-8')}.txt`), false);
 });
+
+for (const output_format of ['srt', 'vtt', 'csv']) {
+  test(`${output_format} transcription returns the ${output_format} file`, async (t) => {
+    const { audioPath } = setUpFakeWhisper(t);
+
+    const result = await transcribe(audioPath, options({ model: 'tiny.en', output_format }));
+
+    assert.equal(result.text, `${output_format} file`);
+  });
+}

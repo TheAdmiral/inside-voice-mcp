@@ -2,10 +2,12 @@ const pad = (number, width = 2) => String(number).padStart(width, '0');
 
 // VTT uses "." before the milliseconds, SRT uses ",".
 export function formatTimestamp(seconds, separator = '.') {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const wholeSeconds = Math.floor(seconds % 60);
-  const milliseconds = Math.floor((seconds % 1) * 1000);
+  // Work in whole milliseconds, because 3.92 % 1 * 1000 comes out as 919.99...
+  const totalMilliseconds = Math.round(seconds * 1000);
+  const hours = Math.floor(totalMilliseconds / 3_600_000);
+  const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000);
+  const wholeSeconds = Math.floor((totalMilliseconds % 60_000) / 1000);
+  const milliseconds = totalMilliseconds % 1000;
 
   return `${pad(hours)}:${pad(minutes)}:${pad(wholeSeconds)}${separator}${pad(milliseconds, 3)}`;
 }
@@ -28,4 +30,18 @@ export function formatVtt(cues) {
 /** @param {{ start: number, end: number, text: string }[]} cues */
 export function formatSrt(cues) {
   return formatCues(cues, ',');
+}
+
+/**
+ * Matches whisper-cli's CSV output, with times in milliseconds.
+ * @param {{ start: number, end: number, text: string }[]} cues
+ */
+export function formatCsv(cues) {
+  const rows = cues.map((cue) => {
+    const start = Math.round(cue.start * 1000);
+    const end = Math.round(cue.end * 1000);
+    return `${start},${end},"${cue.text.replaceAll('"', '""')}"\n`;
+  });
+
+  return `start,end,text\n${rows.join('')}`;
 }

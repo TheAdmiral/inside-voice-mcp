@@ -162,12 +162,16 @@ export function parseWhisperJson(json) {
 }
 
 async function readWhisperOutput(outputBase, stdout, options) {
-  const writesJsonFile = options.word_timestamps || options.output_format === 'json';
-  if (!writesJsonFile) {
+  if (options.word_timestamps || options.output_format === 'json') {
+    const jsonText = await readFile(`${outputBase}.json`, 'utf-8');
+    return parseWhisperJson(JSON.parse(jsonText));
+  }
+
+  if (options.output_format === 'txt') {
     return { text: stdout.trim(), language: 'en' };
   }
 
-  // whisper-cli writes JSON to the output file, not to stdout.
-  const jsonText = await readFile(`${outputBase}.json`, 'utf-8');
-  return parseWhisperJson(JSON.parse(jsonText));
+  // stdout is always timestamped text, so the requested format only exists in the file.
+  const text = await readFile(`${outputBase}.${options.output_format}`, 'utf-8');
+  return { text: text.trim(), language: 'en' };
 }

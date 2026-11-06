@@ -63,21 +63,22 @@ async function handler(args) {
       ...chunks.map((chunk) => chunk.path).filter((path) => path !== processedAudioPath),
     );
 
+    // Every format except txt is built from segments, and only JSON output has them.
+    const wantsTimestamps = options.word_timestamps || options.output_format !== 'txt';
+    const chunkOptions = wantsTimestamps ? { ...options, output_format: 'json' } : options;
+
     const chunkTranscriptions = [];
 
     for (const [index, chunk] of chunks.entries()) {
       progress(`Transcribing chunk ${index + 1}/${chunks.length}...`);
 
       try {
-        const result = await transcribe(chunk.path, options);
+        const result = await transcribe(chunk.path, chunkOptions);
         chunkTranscriptions.push({ chunkIndex: index, startOffset: chunk.start, result });
       } catch (error) {
         throw new Error(`Failed to transcribe chunk ${index + 1}: ${error.message}`);
       }
     }
-
-    const wantsTimestamps =
-      options.word_timestamps || options.output_format === 'vtt' || options.output_format === 'srt';
 
     const assembledResult = assembleTranscriptions(chunkTranscriptions, {
       overlapSeconds: overlap_seconds,

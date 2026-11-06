@@ -1,4 +1,4 @@
-import { formatSrt, formatVtt } from './subtitles.js';
+import { formatCsv, formatSrt, formatVtt } from './subtitles.js';
 
 /**
  * @typedef {import('../whisper/integration.js').TranscriptionResult} TranscriptionResult
@@ -91,6 +91,8 @@ export function formatOutput(result, format) {
       return cues.length === 0 ? `WEBVTT\n\n${result.text}` : formatVtt(cues);
     case 'srt':
       return cues.length === 0 ? result.text : formatSrt(cues);
+    case 'csv':
+      return formatCsv(cues);
     case 'json':
       return JSON.stringify(result, null, 2);
     default:

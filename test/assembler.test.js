@@ -66,7 +66,7 @@ test('formats output per format', () => {
   };
 
   assert.equal(formatOutput(result, 'txt'), 'Hello world.');
-  assert.equal(formatOutput(result, 'csv'), 'Hello world.');
+  assert.equal(formatOutput(result, 'csv'), 'start,end,text\n0,2000,"Hello world."\n');
   assert.equal(
     formatOutput(result, 'vtt'),
     'WEBVTT\n\n1\n00:00:00.000 --> 00:00:02.000\nHello world.\n\n',
