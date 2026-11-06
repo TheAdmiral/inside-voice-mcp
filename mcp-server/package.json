@@ -1,5 +1,5 @@
 {
-  "name": "whisper-mcp-server",
+  "name": "inside-voice-mcp",
   "version": "1.0.3",
   "description": "whisper.cpp MCP server for local speech-to-text transcription",
   "main": "src/index.js",
@@ -24,7 +24,7 @@
     "speech-to-text",
     "transcription"
   ],
-  "author": "whisper-mcp-server",
+  "author": "inside-voice-mcp",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

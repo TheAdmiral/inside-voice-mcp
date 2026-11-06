@@ -39,7 +39,7 @@ const toolsByName = new Map(tools.map((tool) => [tool.name, tool]));
 
 function createServer() {
   const server = new Server(
-    { name: 'whisper-mcp-server', version: packageJson.version },
+    { name: 'inside-voice-mcp', version: packageJson.version },
     { capabilities: { tools: {} } },
   );
 

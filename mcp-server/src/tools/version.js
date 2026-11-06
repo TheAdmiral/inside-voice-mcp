@@ -4,7 +4,7 @@ import { jsonResult } from './tool-result.js';
 
 async function handler() {
   return jsonResult({
-    name: 'whisper-mcp-server',
+    name: 'inside-voice-mcp',
     version: packageJson.version,
     description: 'whisper.cpp MCP server for local speech-to-text transcription',
     capabilities: [
@@ -16,7 +16,7 @@ async function handler() {
     supported_formats: ['wav', 'mp3', 'm4a', 'flac', 'ogg'],
     output_formats: ['txt', 'vtt', 'srt', 'json', 'csv'],
     whisper_models: ['tiny.en', 'base.en', 'small.en', 'base', 'small', 'medium', 'large-v3'],
-    author: 'whisper-mcp-server',
+    author: 'inside-voice-mcp',
     license: 'MIT',
   });
 }

@@ -1,11 +1,11 @@
-# Local Speech-to-Text MCP Server
+# Inside Voice
 
 > [!CAUTION]
 > # ⚠️ This project is currently broken
 >
 > I am actively fixing it. Please do not rely on it until this warning is removed.
 
-A high-performance Model Context Protocol (MCP) server providing local speech-to-text transcription using whisper.cpp, optimized for Apple Silicon.
+Inside Voice is a high-performance Model Context Protocol (MCP) server providing local speech-to-text transcription using whisper.cpp, optimized for Apple Silicon.
 
 ## 🎯 Features
 
@@ -36,8 +36,8 @@ A high-performance Model Context Protocol (MCP) server providing local speech-to
 ### Installation
 
 ```bash
-git clone https://github.com/TheAdmiral/local-stt-mcp.git
-cd local-stt-mcp/mcp-server
+git clone https://github.com/TheAdmiral/inside-voice-mcp.git
+cd inside-voice-mcp/mcp-server
 npm install
 
 # Download whisper models
@@ -56,9 +56,9 @@ Add to your MCP client configuration:
 ```json
 {
   "mcpServers": {
-    "whisper-mcp": {
+    "inside-voice": {
       "command": "node",
-      "args": ["path/to/local-stt-mcp/mcp-server/src/index.js"]
+      "args": ["path/to/inside-voice-mcp/mcp-server/src/index.js"]
     }
   }
 }
@@ -115,7 +115,7 @@ npm run format
 
 ## 🤝 Contributing
 
-This project is being substantially reworked, so please [open an issue](https://github.com/TheAdmiral/local-stt-mcp/issues) to discuss a change before starting on it.
+This project is being substantially reworked, so please [open an issue](https://github.com/TheAdmiral/inside-voice-mcp/issues) to discuss a change before starting on it.
 
 Before submitting a pull request, run these from `mcp-server/`:
 

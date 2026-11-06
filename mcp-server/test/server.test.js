@@ -32,7 +32,7 @@ test('lists every tool', async () => {
 
 test('calls a tool over stdio', async () => {
   const result = await client.callTool({ name: 'version', arguments: {} });
-  assert.equal(JSON.parse(result.content[0].text).name, 'whisper-mcp-server');
+  assert.equal(JSON.parse(result.content[0].text).name, 'inside-voice-mcp');
 });
 
 test('rejects unknown tools with MethodNotFound', async () => {

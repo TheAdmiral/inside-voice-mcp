@@ -1,6 +1,6 @@
-# whisper.cpp MCP Server
+# Inside Voice
 
-A Model Context Protocol server that provides local speech-to-text transcription using whisper.cpp, optimized for Apple Silicon performance.
+Inside Voice is a Model Context Protocol server that provides local speech-to-text transcription using whisper.cpp, optimized for Apple Silicon performance.
 
 ## 🎯 Features
 
@@ -28,8 +28,8 @@ A Model Context Protocol server that provides local speech-to-text transcription
 brew install whisper-cpp
 
 # Clone and setup
-git clone https://github.com/TheAdmiral/local-stt-mcp.git
-cd local-stt-mcp/mcp-server
+git clone https://github.com/TheAdmiral/inside-voice-mcp.git
+cd inside-voice-mcp/mcp-server
 npm install
 
 # Download base model (recommended starting point)
@@ -76,7 +76,7 @@ Get server version information to verify you're running the latest code.
 **Example Response:**
 ```json
 {
-  "name": "whisper-mcp-server",
+  "name": "inside-voice-mcp",
   "version": "1.0.1",
   "capabilities": ["audio transcription", "Apple Silicon optimization"],
   "supported_formats": ["wav", "mp3", "m4a", "flac", "ogg"],
@@ -192,10 +192,10 @@ Use the included `.mcp.json` file in the project root:
 ```json
 {
   "mcpServers": {
-    "whisper-mcp": {
+    "inside-voice": {
       "command": "node", 
       "args": ["mcp-server/src/index.js"],
-      "cwd": "/path/to/your/local-stt-mcp",
+      "cwd": "/path/to/your/inside-voice-mcp",
       "env": {},
       "description": "whisper.cpp MCP server for local speech-to-text transcription"
     }
@@ -210,9 +210,9 @@ Add to your MCP client configuration:
 ```json
 {
   "mcpServers": {
-    "whisper-mcp": {
+    "inside-voice": {
       "command": "node",
-      "args": ["/path/to/whisper-mcp-server/src/index.js"],
+      "args": ["/path/to/inside-voice-mcp/mcp-server/src/index.js"],
       "env": {}
     }
   }
@@ -271,7 +271,7 @@ curl -L -O https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.e
 
 ## 🤝 Contributing
 
-This project is being substantially reworked, so please [open an issue](https://github.com/TheAdmiral/local-stt-mcp/issues) to discuss a change before starting on it.
+This project is being substantially reworked, so please [open an issue](https://github.com/TheAdmiral/inside-voice-mcp/issues) to discuss a change before starting on it.
 
 Before submitting a pull request, run these from `mcp-server/`:
 
