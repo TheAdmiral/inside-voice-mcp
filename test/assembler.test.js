@@ -129,3 +129,20 @@ test('txt output from several chunks uses file-relative times', () => {
 test('txt output without segments is the plain text', () => {
   assert.equal(formatOutput({ text: 'Hello.' }, 'txt'), 'Hello.');
 });
+
+test('word times follow their segments across chunks', () => {
+  const result = assembleTranscriptions(
+    [
+      chunk(0, 0, 'A', [
+        { start: 53, end: 56, text: 'A', words: [{ start: 53, end: 56, text: 'A' }] },
+      ]),
+      chunk(1, 50, 'B', [
+        { start: 5.5, end: 8, text: 'B', words: [{ start: 6, end: 7, text: 'B' }] },
+      ]),
+    ],
+    { overlapSeconds: 10 },
+  );
+
+  assert.deepEqual(result.segments[0].words, [{ start: 53, end: 55.5, text: 'A' }]);
+  assert.deepEqual(result.segments[1].words, [{ start: 56, end: 57, text: 'B' }]);
+});

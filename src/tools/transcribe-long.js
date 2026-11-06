@@ -98,6 +98,7 @@ async function handler(args) {
         chunk_duration_minutes,
         overlap_seconds,
         segments_count: assembledResult.segments?.length ?? 0,
+        segments: options.word_timestamps ? assembledResult.segments : undefined,
         temp_files_created: tempFiles.length,
         temp_files_cleaned: auto_cleanup,
       },

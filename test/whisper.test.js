@@ -234,3 +234,55 @@ test('word timestamps with json output still return the parsed JSON', async (t) 
   assert.equal(result.text, 'hello');
   assert.deepEqual(result.segments, [{ start: 0, end: 1, text: 'hello' }]);
 });
+
+test('merges tokens into words with times in seconds', () => {
+  const { segments } = parseWhisperJson({
+    transcription: [
+      {
+        text: " Today's plan.",
+        offsets: { from: 0, to: 3000 },
+        tokens: [
+          { text: '[_BEG_]', offsets: { from: 0, to: 0 } },
+          { text: ' Today', offsets: { from: 100, to: 500 } },
+          { text: "'s", offsets: { from: 500, to: 700 } },
+          { text: ' plan', offsets: { from: 800, to: 1200 } },
+          { text: '.', offsets: { from: 1200, to: 2900 } },
+          { text: '[_TT_150]', offsets: { from: 3000, to: 3000 } },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(segments[0].words, [
+    { start: 0.1, end: 0.7, text: "Today's" },
+    { start: 0.8, end: 1.2, text: 'plan.' },
+  ]);
+});
+
+test('words with no duration run up to the next word or the segment end', () => {
+  const { segments } = parseWhisperJson({
+    transcription: [
+      {
+        text: ' Hello there',
+        offsets: { from: 0, to: 2000 },
+        tokens: [
+          { text: ' Hello', offsets: { from: 480, to: 480 } },
+          { text: ' there', offsets: { from: 900, to: 900 } },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(segments[0].words, [
+    { start: 0.48, end: 0.9, text: 'Hello' },
+    { start: 0.9, end: 2, text: 'there' },
+  ]);
+});
+
+test('segments have no words key without tokens', () => {
+  const { segments } = parseWhisperJson({
+    transcription: [{ text: ' Hi', offsets: { from: 0, to: 1000 } }],
+  });
+
+  assert.equal('words' in segments[0], false);
+});

@@ -15,7 +15,8 @@ const OUTPUT_FORMAT_FLAGS = {
 };
 
 /**
- * @typedef {{ start: number, end: number, text: string }} Segment
+ * @typedef {{ start: number, end: number, text: string }} Word
+ * @typedef {{ start: number, end: number, text: string, words?: Word[] }} Segment
  * @typedef {{ text: string, segments?: Segment[], language?: string, model_used: string,
  *   processing_time: number }} TranscriptionResult
  */
@@ -147,11 +148,15 @@ export function parseWhisperJson(json) {
 
   const segments = entries
     .filter((entry) => entry.offsets && entry.text)
-    .map((entry) => ({
-      start: entry.offsets.from / 1000,
-      end: entry.offsets.to / 1000,
-      text: entry.text.trim(),
-    }));
+    .map((entry) => {
+      const words = parseWhisperWords(entry);
+      return {
+        start: entry.offsets.from / 1000,
+        end: entry.offsets.to / 1000,
+        text: entry.text.trim(),
+        ...(words.length > 0 && { words }),
+      };
+    });
 
   const text = entries
     .map((entry) => entry.text)
@@ -159,6 +164,47 @@ export function parseWhisperJson(json) {
     .trim();
 
   return { text, segments, language: json.result?.language || 'en' };
+}
+
+/**
+ * Merges a segment's tokens into words. Only the full JSON output has tokens.
+ * A token that starts with a space begins a new word, so languages written without spaces
+ * come out as one word per segment.
+ * @returns {Word[]}
+ */
+function parseWhisperWords(entry) {
+  const words = [];
+
+  for (const token of entry.tokens ?? []) {
+    // Special tokens look like [_BEG_] and [_TT_196].
+    if (token.text.startsWith('[_')) {
+      continue;
+    }
+
+    const previousWord = words.at(-1);
+    if (previousWord && !token.text.startsWith(' ')) {
+      previousWord.text += token.text;
+      // Punctuation tokens run on into the silence after the word, so they don't extend it.
+      if (!/^\p{P}+$/u.test(token.text)) {
+        previousWord.end = token.offsets.to / 1000;
+      }
+    } else {
+      words.push({
+        start: token.offsets.from / 1000,
+        end: token.offsets.to / 1000,
+        text: token.text.trim(),
+      });
+    }
+  }
+
+  // whisper gives some tokens no duration, so run those words up to the next one.
+  for (const [index, word] of words.entries()) {
+    if (word.end === word.start) {
+      word.end = words[index + 1]?.start ?? entry.offsets.to / 1000;
+    }
+  }
+
+  return words;
 }
 
 async function readWhisperOutput(outputBase, stdout, options) {

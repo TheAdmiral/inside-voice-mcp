@@ -101,11 +101,16 @@ export function formatOutput(result, format) {
 
 /** Moves segment times from chunk-relative to file-relative. */
 function shiftSegments(segments, startOffset) {
-  return segments.map((segment) => ({
-    start: segment.start + startOffset,
-    end: segment.end + startOffset,
-    text: segment.text,
-  }));
+  const shift = (item) => ({
+    ...item,
+    start: item.start + startOffset,
+    end: item.end + startOffset,
+  });
+
+  return segments.map((segment) => {
+    const shifted = shift(segment);
+    return segment.words ? { ...shifted, words: segment.words.map(shift) } : shifted;
+  });
 }
 
 /**
@@ -122,7 +127,12 @@ function joinAtOverlapMidpoint(assembledSegments, newSegments, cutoffTime) {
   // The chunks can disagree slightly on timing, and cues must not overlap.
   const lastSegment = assembledSegments.at(-1);
   if (lastSegment && keptSegments.length > 0) {
-    lastSegment.end = Math.min(lastSegment.end, keptSegments[0].start);
+    const nextStart = keptSegments[0].start;
+    lastSegment.end = Math.min(lastSegment.end, nextStart);
+    for (const word of lastSegment.words ?? []) {
+      word.start = Math.min(word.start, nextStart);
+      word.end = Math.min(word.end, nextStart);
+    }
   }
 
   assembledSegments.push(...keptSegments);
