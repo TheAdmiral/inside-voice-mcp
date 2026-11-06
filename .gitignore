@@ -73,7 +73,6 @@ venv.bak/
 
 # Private development files
 LLM-*/
-CLAUDE.md
 *-private/
 *-dev/
 *_private/
@@ -141,4 +140,3 @@ CLAUDE.md
 
 #LLM
 .claude
-CLAUDE.md 
