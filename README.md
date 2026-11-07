@@ -208,6 +208,7 @@ MIT License - see LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
+- [SmartLittleApps](https://github.com/SmartLittleApps) for [local-stt-mcp](https://github.com/SmartLittleApps/local-stt-mcp), the original project this is forked from
 - [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for optimized inference
 - [OpenAI Whisper](https://github.com/openai/whisper) for the original models
 - [Model Context Protocol](https://modelcontextprotocol.io/) for the framework
