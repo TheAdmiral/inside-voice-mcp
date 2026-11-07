@@ -1,6 +1,6 @@
 {
   "name": "inside-voice-mcp",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "whisper.cpp MCP server for local speech-to-text transcription",
   "main": "src/index.js",
   "type": "module",
