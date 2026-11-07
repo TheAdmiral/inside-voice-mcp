@@ -10,7 +10,7 @@ async function handler() {
     capabilities: [
       'audio transcription',
       'multiple output formats',
-      'M1 optimization',
+      'Apple Silicon optimization',
       'local processing',
     ],
     supported_formats: ['wav', 'mp3', 'm4a', 'flac', 'ogg'],

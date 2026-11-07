@@ -82,10 +82,10 @@ function generateDiagnostics(result, installationError) {
 
   // Check Apple Silicon optimization
   if (result.system_info.arch === 'arm64' && result.system_info.platform === 'darwin') {
-    diagnostics.m1_optimization = 'available';
+    diagnostics.apple_silicon_optimization = 'available';
     diagnostics.recommended_threads = Math.min(4, result.system_info.threads_available);
     diagnostics.recommendations.push(
-      `Optimal thread count for M1: ${diagnostics.recommended_threads}`,
+      `Optimal thread count for Apple Silicon: ${diagnostics.recommended_threads}`,
     );
   }
 

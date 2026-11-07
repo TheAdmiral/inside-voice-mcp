@@ -20,7 +20,7 @@ const MODEL_INFO = {
     languages: ['en'],
     speed_rating: 4,
     accuracy_rating: 3,
-    recommended_for: ['general transcription', 'M1 MacBook Pro', 'balanced performance'],
+    recommended_for: ['general transcription', 'Apple Silicon', 'balanced performance'],
   },
   'small.en': {
     name: 'small.en',
@@ -72,7 +72,7 @@ async function handler() {
   return jsonResult({
     available_models: downloaded,
     not_downloaded: notDownloaded,
-    recommended_for_m1: 'base.en',
+    recommended_for_apple_silicon: 'base.en',
     performance_notes: {
       fastest: 'tiny.en',
       balanced: 'base.en',

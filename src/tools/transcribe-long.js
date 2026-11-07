@@ -126,8 +126,7 @@ async function handler(args) {
 
 export const transcribeLongTool = {
   name: 'transcribe_long',
-  description:
-    'Transcribe long audio files with automatic splitting, format conversion, and context preservation',
+  description: 'Transcribe long audio files by splitting them into overlapping chunks',
   argsSchema,
   handler,
 };
