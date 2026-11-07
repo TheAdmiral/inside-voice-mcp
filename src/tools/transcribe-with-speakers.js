@@ -1,12 +1,8 @@
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { z } from 'zod';
-import { transcribe } from '../whisper/integration.js';
-import {
-  checkFfmpegInstallation,
-  convertToWav,
-  isWhisperCompatible,
-} from '../utils/audio-converter.js';
+import { transcribe } from '../whisper.js';
+import { prepareAudio } from '../utils/audio-converter.js';
 import {
   DiarizationError,
   findDiarizationPython,
@@ -16,7 +12,7 @@ import {
   alignTranscriptionWithSpeakers,
   formatSpeakerSegments,
 } from '../utils/diarization-alignment.js';
-import { DiarizationOptionsSchema } from '../schemas.js';
+import { DiarizationOptionsSchema, TranscribeOptionsSchema } from '../schemas.js';
 import { jsonResult, textResult } from './tool-result.js';
 
 const argsSchema = z.object({
@@ -31,12 +27,65 @@ const argsSchema = z.object({
 });
 
 const HELP_TEXT = {
-  SETUP_ERROR:
-    '\n\nSetup Help:\n- Install Python: brew install python3\n- Install dependencies: pip install torch torchaudio pyannote.audio\n- Set HF_TOKEN environment variable for Pyannote models',
+  SETUP_ERROR: [
+    '',
+    '',
+    'Setup Help:',
+    '- Install Python: brew install python3',
+    '- Install dependencies: pip install -r python/requirements.txt',
+    '- Set HF_TOKEN environment variable for Pyannote models',
+  ].join('\n'),
   INPUT_ERROR: '\n\nPlease check that the audio file exists and is accessible.',
-  PROCESSING_ERROR:
-    '\n\nThis may be due to audio format issues or model loading problems. Try with a different audio file or check your Python environment.',
+  PROCESSING_ERROR: [
+    '',
+    '',
+    'This may be due to audio format issues or model loading problems.',
+    'Try with a different audio file or check your Python environment.',
+  ].join('\n'),
 };
+
+async function findPythonOrThrow() {
+  const python = await findDiarizationPython();
+
+  if (!python) {
+    throw new DiarizationError(
+      'SETUP_ERROR',
+      'Speaker diarization requires Python with PyTorch and pyannote.audio.',
+    );
+  }
+
+  return python;
+}
+
+function transcribeForAlignment(audioPath, whisperModel) {
+  // Alignment needs segment timestamps, so always ask whisper for JSON.
+  const transcribeOptions = TranscribeOptionsSchema.parse({
+    model: whisperModel,
+    output_format: 'json',
+  });
+
+  return transcribe(audioPath, transcribeOptions);
+}
+
+function buildResult(speakerSegments, device, options, processingTime) {
+  if (options.output_format !== 'json') {
+    return textResult(formatSpeakerSegments(speakerSegments, options.output_format));
+  }
+
+  const speakers = [...new Set(speakerSegments.map((segment) => segment.speaker))];
+
+  return jsonResult({
+    segments: speakerSegments,
+    speakers,
+    metadata: {
+      whisper_model: options.whisper_model,
+      diarization_model: options.model,
+      processing_time: processingTime,
+      num_speakers: speakers.length,
+      device_used: device,
+    },
+  });
+}
 
 async function handler({ audio_file_path, options, auto_convert }) {
   const startTime = Date.now();
@@ -47,74 +96,30 @@ async function handler({ audio_file_path, options, auto_convert }) {
       throw new DiarizationError('INPUT_ERROR', `Audio file not found: ${audio_file_path}`);
     }
 
-    const python = await findDiarizationPython();
-    if (!python) {
-      throw new DiarizationError(
-        'SETUP_ERROR',
-        'Speaker diarization requires Python with PyTorch and pyannote.audio. Please install: pip install torch torchaudio pyannote.audio',
-      );
-    }
+    const python = await findPythonOrThrow();
 
-    let processedAudioPath = audio_file_path;
-
-    if (auto_convert && !isWhisperCompatible(audio_file_path)) {
-      if (!(await checkFfmpegInstallation())) {
-        throw new DiarizationError(
-          'SETUP_ERROR',
-          'ffmpeg is required for audio format conversion. Install with: brew install ffmpeg',
-        );
-      }
-
-      tempFile = await convertToWav(audio_file_path);
-      processedAudioPath = tempFile;
-    }
+    const audio = await prepareAudio(audio_file_path, { autoConvert: auto_convert });
+    tempFile = audio.tempFile;
 
     console.error('[Diarization] Running whisper.cpp transcription...');
-    // Alignment needs segment timestamps, so always ask whisper for JSON.
-    const transcription = await transcribe(processedAudioPath, {
-      model: options.whisper_model,
-      output_format: 'json',
-      word_timestamps: true,
-      language: 'auto',
-      temperature: 0,
-      threads: 4,
-      translate: false,
-      max_len: 0,
-      split_on_word: false,
-    });
+    const transcription = await transcribeForAlignment(audio.processedPath, options.whisper_model);
 
     console.error('[Diarization] Running speaker diarization...');
-    const diarizationSegments = await runDiarization(python, {
-      audioPath: processedAudioPath,
+    const diarization = await runDiarization(python, {
+      audioPath: audio.processedPath,
       model: options.model,
       minSpeakers: options.min_speakers,
       maxSpeakers: options.max_speakers,
+      useMps: options.use_mps,
     });
 
     console.error('[Diarization] Aligning transcription with speakers...');
-    const speakerSegments = alignTranscriptionWithSpeakers(transcription, diarizationSegments);
-    const speakers = [...new Set(speakerSegments.map((segment) => segment.speaker))];
+    const speakerSegments = alignTranscriptionWithSpeakers(transcription, diarization.segments);
     const processingTime = Date.now() - startTime;
 
-    console.error(
-      `[Diarization] Completed in ${processingTime}ms. Found ${speakers.length} speakers.`,
-    );
+    console.error(`[Diarization] Completed in ${processingTime}ms.`);
 
-    if (options.output_format !== 'json') {
-      return textResult(formatSpeakerSegments(speakerSegments, options.output_format));
-    }
-
-    return jsonResult({
-      segments: speakerSegments,
-      speakers,
-      metadata: {
-        whisper_model: options.whisper_model,
-        diarization_model: options.model,
-        processing_time: processingTime,
-        num_speakers: speakers.length,
-        device_used: options.use_mps ? 'mps' : 'cpu',
-      },
-    });
+    return buildResult(speakerSegments, diarization.device, options, processingTime);
   } catch (error) {
     console.error(`[Diarization] Failed: ${error.message}`);
     const helpText = error instanceof DiarizationError ? HELP_TEXT[error.code] : '';

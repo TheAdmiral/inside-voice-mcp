@@ -3,7 +3,7 @@ import { mkdir, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { getModelsDir } from '../src/whisper/integration.js';
+import { getModelsDir } from '../src/whisper.js';
 
 const DOWNLOAD_BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
 const DEFAULT_MODEL = 'base.en';
@@ -39,10 +39,13 @@ async function downloadModel(model) {
   console.log(`Downloaded ${model}`);
 }
 
-const models = process.argv.slice(2);
+let models = process.argv.slice(2);
+if (models.length === 0) {
+  models = [DEFAULT_MODEL];
+}
 
 try {
-  for (const model of models.length > 0 ? models : [DEFAULT_MODEL]) {
+  for (const model of models) {
     await downloadModel(model);
   }
 } catch (error) {

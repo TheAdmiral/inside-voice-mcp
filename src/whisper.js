@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runCommand } from '../utils/run-command.js';
+import { runCommand } from './utils/run-command.js';
 
 const WHISPER_BINARY = 'whisper-cli';
 
@@ -27,8 +27,7 @@ export function getModelsDir() {
 }
 
 /**
- * @param {string} audioPath
- * @param {object} options Validated options, see TranscribeOptionsSchema in schemas.js.
+ * `options` are validated options, see TranscribeOptionsSchema in schemas.js.
  * @returns {Promise<TranscriptionResult>}
  */
 export async function transcribe(audioPath, options) {
@@ -83,22 +82,19 @@ export function getAvailableModels() {
 export async function checkInstallation() {
   try {
     const result = await runCommand(WHISPER_BINARY, ['--help']);
-    const installed = result.exitCode === 0;
-    return {
-      installed,
-      version: installed ? 'whisper.cpp' : undefined,
-      error: installed ? undefined : result.stderr,
-    };
+    if (result.exitCode === 0) {
+      return { installed: true, version: 'whisper.cpp' };
+    }
+
+    return { installed: false, error: result.stderr };
   } catch (error) {
     return { installed: false, error: error.message };
   }
 }
 
 /**
- * @param {string} audioPath
- * @param {string} modelPath
- * @param {string} outputBase Output file path without its extension.
- * @param {object} options Validated options, see TranscribeOptionsSchema in schemas.js.
+ * `outputBase` is the output file path without its extension.
+ * `options` are validated options, see TranscribeOptionsSchema in schemas.js.
  */
 export function buildWhisperArgs(audioPath, modelPath, outputBase, options) {
   const args = [
@@ -146,17 +142,7 @@ export function buildWhisperArgs(audioPath, modelPath, outputBase, options) {
 export function parseWhisperJson(json) {
   const entries = json.transcription ?? [];
 
-  const segments = entries
-    .filter((entry) => entry.offsets && entry.text)
-    .map((entry) => {
-      const words = parseWhisperWords(entry);
-      return {
-        start: entry.offsets.from / 1000,
-        end: entry.offsets.to / 1000,
-        text: entry.text.trim(),
-        ...(words.length > 0 && { words }),
-      };
-    });
+  const segments = entries.filter((entry) => entry.offsets && entry.text).map(parseWhisperSegment);
 
   const text = entries
     .map((entry) => entry.text)
@@ -164,6 +150,25 @@ export function parseWhisperJson(json) {
     .trim();
 
   return { text, segments, language: json.result?.language || 'en' };
+}
+
+function parseWhisperSegment(entry) {
+  const segment = {
+    start: entry.offsets.from / 1000,
+    end: entry.offsets.to / 1000,
+    text: entry.text.trim(),
+  };
+
+  const words = parseWhisperWords(entry);
+  if (words.length > 0) {
+    segment.words = words;
+  }
+
+  return segment;
+}
+
+function isPunctuation(text) {
+  return /^\p{P}+$/u.test(text);
 }
 
 /**
@@ -185,7 +190,7 @@ function parseWhisperWords(entry) {
     if (previousWord && !token.text.startsWith(' ')) {
       previousWord.text += token.text;
       // Punctuation tokens run on into the silence after the word, so they don't extend it.
-      if (!/^\p{P}+$/u.test(token.text)) {
+      if (!isPunctuation(token.text)) {
         previousWord.end = token.offsets.to / 1000;
       }
     } else {
@@ -198,29 +203,42 @@ function parseWhisperWords(entry) {
   }
 
   // whisper gives some tokens no duration, so run those words up to the next one.
+  const segmentEnd = entry.offsets.to / 1000;
   for (const [index, word] of words.entries()) {
     if (word.end === word.start) {
-      word.end = words[index + 1]?.start ?? entry.offsets.to / 1000;
+      const nextWord = words[index + 1];
+      word.end = nextWord ? nextWord.start : segmentEnd;
     }
   }
 
   return words;
 }
 
+async function readJsonOutput(outputBase) {
+  const jsonText = await readFile(`${outputBase}.json`, 'utf-8');
+  return parseWhisperJson(JSON.parse(jsonText));
+}
+
 async function readWhisperOutput(outputBase, stdout, options) {
   const { output_format, word_timestamps } = options;
 
-  const parsedJson =
-    output_format === 'json' || word_timestamps
-      ? parseWhisperJson(JSON.parse(await readFile(`${outputBase}.json`, 'utf-8')))
-      : { language: 'en' };
-
   if (output_format === 'json') {
-    return parsedJson;
+    return readJsonOutput(outputBase);
   }
 
   // stdout is always timestamped text, so other formats only exist in their output file.
-  const text =
-    output_format === 'txt' ? stdout : await readFile(`${outputBase}.${output_format}`, 'utf-8');
-  return { ...parsedJson, text: text.trim() };
+  let text = stdout;
+  if (output_format !== 'txt') {
+    text = await readFile(`${outputBase}.${output_format}`, 'utf-8');
+  }
+
+  const output = { text: text.trim(), language: 'en' };
+
+  if (word_timestamps) {
+    const { segments, language } = await readJsonOutput(outputBase);
+    output.segments = segments;
+    output.language = language;
+  }
+
+  return output;
 }

@@ -1,5 +1,10 @@
 import { formatSrt, formatVtt } from './subtitles.js';
 
+const UNKNOWN_SPEAKER = 'speaker_unknown';
+const MIN_OVERLAP_SECONDS = 0.1;
+const MIN_CONFIDENCE = 0.1;
+const MERGE_GAP_SECONDS = 1;
+
 /**
  * @typedef {{ start: number, end: number, speaker: string }} DiarizationSegment
  * @typedef {{ text: string, speaker: string, start: number, end: number,
@@ -8,62 +13,54 @@ import { formatSrt, formatVtt } from './subtitles.js';
 
 /**
  * Gives each transcription segment the speaker whose diarization segment overlaps it most.
- * @param {import('../whisper/integration.js').TranscriptionResult} transcription
+ * @param {import('../whisper.js').TranscriptionResult} transcription
  * @param {DiarizationSegment[]} diarization
  * @returns {SpeakerSegment[]}
  */
-export function alignTranscriptionWithSpeakers(transcription, diarization, options = {}) {
-  const { overlapThreshold = 0.1, mergeThreshold = 1.0, confidenceThreshold = 0.1 } = options;
+export function alignTranscriptionWithSpeakers(transcription, diarization) {
+  const transcriptionSegments = getSegmentsToAlign(transcription, diarization);
+  const aligned = transcriptionSegments.map((segment) => assignSpeaker(segment, diarization));
 
-  const transcriptionSegments = transcription.segments?.length
-    ? transcription.segments
-    : [
-        {
-          start: 0,
-          // Cover the whole diarization, and at least 20 seconds.
-          end: Math.max(20, ...diarization.map((segment) => segment.end)),
-          text: transcription.text,
-        },
-      ];
+  return mergeNeighbours(aligned);
+}
 
-  const aligned = [];
+function getSegmentsToAlign(transcription, diarization) {
+  if (transcription.segments?.length) {
+    return transcription.segments;
+  }
 
-  for (const transcriptionSegment of transcriptionSegments) {
-    let bestMatch = null;
-    let maxOverlap = 0;
+  // No segment times to go on, so cover the whole diarization, and at least 20 seconds.
+  const diarizationEnd = Math.max(...diarization.map((segment) => segment.end));
+  return [{ start: 0, end: Math.max(20, diarizationEnd), text: transcription.text }];
+}
 
-    for (const diarizationSegment of diarization) {
-      const overlap = calculateOverlap(transcriptionSegment, diarizationSegment);
-      if (overlap > maxOverlap) {
-        maxOverlap = overlap;
-        bestMatch = diarizationSegment;
-      }
-    }
+/** A segment with no good speaker match stays in the output, so its text is never lost. */
+function assignSpeaker(transcriptionSegment, diarization) {
+  const { text, start, end } = transcriptionSegment;
+  const { bestMatch, maxOverlap } = findBestSpeaker(transcriptionSegment, diarization);
+  const confidence = maxOverlap / (end - start);
 
-    if (bestMatch && maxOverlap > overlapThreshold) {
-      const confidence = maxOverlap / (transcriptionSegment.end - transcriptionSegment.start);
+  const isGoodMatch = maxOverlap > MIN_OVERLAP_SECONDS && confidence >= MIN_CONFIDENCE;
+  if (!isGoodMatch) {
+    return { text, speaker: UNKNOWN_SPEAKER, start, end, confidence: 0 };
+  }
 
-      if (confidence >= confidenceThreshold) {
-        aligned.push({
-          text: transcriptionSegment.text,
-          speaker: normalizeSpeakerLabel(bestMatch.speaker),
-          start: transcriptionSegment.start,
-          end: transcriptionSegment.end,
-          confidence,
-        });
-      }
-    } else {
-      aligned.push({
-        text: transcriptionSegment.text,
-        speaker: 'speaker_unknown',
-        start: transcriptionSegment.start,
-        end: transcriptionSegment.end,
-        confidence: 0,
-      });
+  return { text, speaker: normalizeSpeakerLabel(bestMatch.speaker), start, end, confidence };
+}
+
+function findBestSpeaker(transcriptionSegment, diarization) {
+  let bestMatch = null;
+  let maxOverlap = 0;
+
+  for (const diarizationSegment of diarization) {
+    const overlap = calculateOverlap(transcriptionSegment, diarizationSegment);
+    if (overlap > maxOverlap) {
+      maxOverlap = overlap;
+      bestMatch = diarizationSegment;
     }
   }
 
-  return mergeNeighbours(aligned, mergeThreshold);
+  return { bestMatch, maxOverlap };
 }
 
 /** @param {SpeakerSegment[]} segments */
@@ -96,26 +93,16 @@ function calculateOverlap(first, second) {
 // Turns labels such as "SPEAKER_00" into "speaker00".
 function normalizeSpeakerLabel(label) {
   const match = label.match(/(\d+)/);
-  if (match) {
-    return `speaker${String(parseInt(match[1], 10)).padStart(2, '0')}`;
+  if (!match) {
+    return label.toLowerCase();
   }
 
-  // No number in the label, so derive a stable one from a hash of the label.
-  const number = (hashString(label) % 10) + 1;
-  return `speaker${String(number).padStart(2, '0')}`;
+  const speakerNumber = String(Number(match[1]));
+  return `speaker${speakerNumber.padStart(2, '0')}`;
 }
 
-function hashString(text) {
-  let hash = 0;
-  for (let index = 0; index < text.length; index++) {
-    hash = (hash << 5) - hash + text.charCodeAt(index);
-    hash = hash & hash; // Keep it a 32-bit integer.
-  }
-  return Math.abs(hash);
-}
-
-// Merges consecutive segments from the same speaker that are less than mergeThreshold apart.
-function mergeNeighbours(segments, mergeThreshold) {
+// Merges consecutive segments from the same speaker that are less than MERGE_GAP_SECONDS apart.
+function mergeNeighbours(segments) {
   const merged = [];
   let current = null;
 
@@ -123,19 +110,23 @@ function mergeNeighbours(segments, mergeThreshold) {
     const canMerge =
       current &&
       current.speaker === segment.speaker &&
-      segment.start - current.end < mergeThreshold;
+      segment.start - current.end < MERGE_GAP_SECONDS;
 
     if (canMerge) {
       current.text += ' ' + segment.text;
       current.end = segment.end;
       current.confidence = Math.min(current.confidence, segment.confidence);
     } else {
-      if (current) merged.push(current);
+      if (current) {
+        merged.push(current);
+      }
       current = { ...segment };
     }
   }
 
-  if (current) merged.push(current);
+  if (current) {
+    merged.push(current);
+  }
 
   return merged;
 }

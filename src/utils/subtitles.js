@@ -1,3 +1,5 @@
+/** @typedef {{ start: number, end: number, text: string }} Cue */
+
 const pad = (number, width = 2) => String(number).padStart(width, '0');
 
 // VTT uses "." before the milliseconds, SRT uses ",".
@@ -22,19 +24,19 @@ function formatCues(cues, separator) {
     .join('');
 }
 
-/** @param {{ start: number, end: number, text: string }[]} cues */
+/** @param {Cue[]} cues */
 export function formatVtt(cues) {
   return `WEBVTT\n\n${formatCues(cues, '.')}`;
 }
 
-/** @param {{ start: number, end: number, text: string }[]} cues */
+/** @param {Cue[]} cues */
 export function formatSrt(cues) {
   return formatCues(cues, ',');
 }
 
 /**
  * Matches whisper-cli's terminal output, which is what `transcribe` returns for txt.
- * @param {{ start: number, end: number, text: string }[]} cues
+ * @param {Cue[]} cues
  */
 export function formatTimestampedText(cues) {
   return cues
@@ -44,7 +46,7 @@ export function formatTimestampedText(cues) {
 
 /**
  * Matches whisper-cli's CSV output, with times in milliseconds.
- * @param {{ start: number, end: number, text: string }[]} cues
+ * @param {Cue[]} cues
  */
 export function formatCsv(cues) {
   const rows = cues.map((cue) => {

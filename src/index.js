@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * whisper.cpp MCP Server
+ * Inside Voice MCP Server
  *
  * A Model Context Protocol server that provides speech-to-text transcription
- * using whisper.cpp optimized for M1 MacBook Pro performance.
+ * using whisper.cpp, optimized for Apple Silicon.
  *
  * stdout carries the MCP protocol, so log to stderr only.
  */
@@ -89,13 +89,8 @@ async function main() {
     process.exit(1);
   });
 
-  try {
-    await server.connect(transport);
-    console.error('whisper.cpp MCP Server running on stdio');
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
+  await server.connect(transport);
+  console.error('Inside Voice MCP server running on stdio');
 }
 
 if (import.meta.main) {

@@ -1,11 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { z } from 'zod';
-import { transcribe } from '../whisper/integration.js';
-import {
-  checkFfmpegInstallation,
-  convertToWav,
-  isWhisperCompatible,
-} from '../utils/audio-converter.js';
+import { transcribe } from '../whisper.js';
+import { prepareAudio } from '../utils/audio-converter.js';
 import { TranscribeOptionsSchema } from '../schemas.js';
 import { jsonResult } from './tool-result.js';
 
@@ -22,20 +18,10 @@ async function handler({ audio_path, options, auto_convert }) {
   let tempFile = null;
 
   try {
-    let processedAudioPath = audio_path;
+    const audio = await prepareAudio(audio_path, { autoConvert: auto_convert });
+    tempFile = audio.tempFile;
 
-    if (auto_convert && !isWhisperCompatible(audio_path)) {
-      if (!(await checkFfmpegInstallation())) {
-        throw new Error(
-          'ffmpeg is required for audio format conversion. Install with: brew install ffmpeg',
-        );
-      }
-
-      tempFile = await convertToWav(audio_path);
-      processedAudioPath = tempFile;
-    }
-
-    const result = await transcribe(processedAudioPath, options);
+    const result = await transcribe(audio.processedPath, options);
 
     return jsonResult({
       transcription: result.text,

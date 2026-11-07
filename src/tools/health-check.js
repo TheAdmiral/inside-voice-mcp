@@ -1,6 +1,6 @@
 import { arch, cpus, platform } from 'node:os';
 import { z } from 'zod';
-import { checkInstallation, getAvailableModels, getModelsDir } from '../whisper/integration.js';
+import { checkInstallation, getAvailableModels, getModelsDir } from '../whisper.js';
 import { jsonResult } from './tool-result.js';
 
 async function handler() {
@@ -80,7 +80,7 @@ function generateDiagnostics(result, installationError) {
     );
   }
 
-  // Check M1 optimization
+  // Check Apple Silicon optimization
   if (result.system_info.arch === 'arm64' && result.system_info.platform === 'darwin') {
     diagnostics.m1_optimization = 'available';
     diagnostics.recommended_threads = Math.min(4, result.system_info.threads_available);
@@ -91,7 +91,7 @@ function generateDiagnostics(result, installationError) {
 
   // Set overall status if no issues found
   if (diagnostics.overall_status === 'unknown') {
-    diagnostics.overall_status = result.models_available.length > 0 ? 'healthy' : 'warning';
+    diagnostics.overall_status = 'healthy';
   }
 
   return diagnostics;

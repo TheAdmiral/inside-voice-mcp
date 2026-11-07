@@ -17,7 +17,7 @@ export const WhisperModel = z.enum([
 
 export const OutputFormat = z.enum(['txt', 'vtt', 'srt', 'json', 'csv']);
 
-export const DiarizationModel = z.enum(['pyannote', 'simple-diarizer']);
+export const DiarizationModel = z.enum(['pyannote']);
 
 export const TranscribeOptionsSchema = z.object({
   model: WhisperModel.default('base.en'),

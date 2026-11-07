@@ -18,7 +18,7 @@ import {
   getModelsDir,
   parseWhisperJson,
   transcribe,
-} from '../src/whisper/integration.js';
+} from '../src/whisper.js';
 
 const options = (overrides = {}) => TranscribeOptionsSchema.parse(overrides);
 

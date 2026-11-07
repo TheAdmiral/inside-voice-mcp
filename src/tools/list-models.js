@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getAvailableModels, getModelsDir } from '../whisper/integration.js';
+import { getAvailableModels, getModelsDir } from '../whisper.js';
 import { jsonResult } from './tool-result.js';
 
 // Ratings go from 1 to 5. For speed 5 is fastest, for accuracy 5 is most accurate.

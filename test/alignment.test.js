@@ -38,6 +38,18 @@ test('segments without an overlapping speaker are unknown', () => {
   assert.equal(result[0].confidence, 0);
 });
 
+test('a segment with too little overlap keeps its text as unknown', () => {
+  const result = alignTranscriptionWithSpeakers(
+    transcription([{ start: 0, end: 10, text: 'Mostly silence.' }]),
+    [{ start: 9.5, end: 10, speaker: 'SPEAKER_00' }],
+  );
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].text, 'Mostly silence.');
+  assert.equal(result[0].speaker, 'speaker_unknown');
+  assert.equal(result[0].confidence, 0);
+});
+
 test('merges neighbouring segments from the same speaker', () => {
   const result = alignTranscriptionWithSpeakers(
     transcription([
@@ -62,8 +74,7 @@ test('normalizes speaker labels', () => {
 
   assert.equal(align('SPEAKER_03'), 'speaker03');
   assert.equal(align('SPEAKER_007'), 'speaker07');
-  assert.match(align('alice'), /^speaker(0[1-9]|10)$/);
-  assert.equal(align('alice'), align('alice'));
+  assert.equal(align('Narrator'), 'narrator');
 });
 
 test('without segments the whole text is one segment', () => {

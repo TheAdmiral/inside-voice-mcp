@@ -47,6 +47,11 @@ test('an invalid model is rejected', () => {
   assert.equal(DiarizationOptionsSchema.safeParse({ whisper_model: 'huge' }).success, false);
 });
 
+test('only implemented diarization models are accepted', () => {
+  assert.equal(DiarizationOptionsSchema.safeParse({ model: 'pyannote' }).success, true);
+  assert.equal(DiarizationOptionsSchema.safeParse({ model: 'simple-diarizer' }).success, false);
+});
+
 test('any language code is accepted', () => {
   assert.equal(TranscribeOptionsSchema.parse({ language: 'sv' }).language, 'sv');
 });

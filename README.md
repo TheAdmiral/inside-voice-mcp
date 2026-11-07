@@ -146,7 +146,7 @@ Add to your MCP client configuration:
 │   ├── index.js           # Server entry point
 │   ├── schemas.js         # Zod schemas for tool options
 │   ├── tools/             # MCP tool implementations
-│   ├── whisper/           # whisper.cpp integration
+│   ├── whisper.js         # whisper.cpp integration
 │   └── utils/             # Speaker diarization & utilities
 ├── python/                # Diarization script and Python dependencies
 ├── scripts/               # Model download and manual smoke test

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Speaker diarization for SpeechToText-MCP.
+Speaker diarization for Inside Voice.
 
-Usage: diarize.py AUDIO_PATH MODEL MIN_SPEAKERS MAX_SPEAKERS
+Usage: diarize.py AUDIO_PATH MODEL MIN_SPEAKERS MAX_SPEAKERS USE_MPS
+USE_MPS is "true" or "false".
 Prints one JSON object on stdout. Progress and errors go to stderr.
 """
 
@@ -10,11 +11,11 @@ import sys
 import json
 import os
 
-def setup_device():
-    """Configure PyTorch device for M1 optimization"""
+def setup_device(use_mps):
+    """Choose the PyTorch device, using MPS on Apple Silicon only if allowed"""
     try:
         import torch
-        if torch.backends.mps.is_available():
+        if use_mps and torch.backends.mps.is_available():
             print("Using MPS (Apple Silicon) acceleration", file=sys.stderr)
             return torch.device("mps")
         elif torch.cuda.is_available():
@@ -27,12 +28,12 @@ def setup_device():
         print("PyTorch not available, falling back to CPU", file=sys.stderr)
         return "cpu"
 
-def diarize_with_pyannote(audio_path, min_speakers, max_speakers):
+def diarize_with_pyannote(audio_path, min_speakers, max_speakers, use_mps):
     """Run diarization using Pyannote.audio 3.1+"""
     try:
         from pyannote.audio import Pipeline
         
-        device = setup_device()
+        device = setup_device(use_mps)
         print(f"Processing: {audio_path}", file=sys.stderr)
         print(f"Speaker range: {min_speakers}-{max_speakers}", file=sys.stderr)
         
@@ -91,11 +92,12 @@ def main():
         model = sys.argv[2]
         min_speakers = int(sys.argv[3])
         max_speakers = int(sys.argv[4])
+        use_mps = sys.argv[5] == "true"
         
         print(f"Starting diarization with {model} model", file=sys.stderr)
         
         if model == "pyannote":
-            result = diarize_with_pyannote(audio_path, min_speakers, max_speakers)
+            result = diarize_with_pyannote(audio_path, min_speakers, max_speakers, use_mps)
         else:
             result = {"error": f"Unsupported model: {model}"}
         

@@ -5,6 +5,7 @@ import { basename, extname, join } from 'node:path';
 import { runCommand } from './run-command.js';
 
 const FFMPEG_BINARY = 'ffmpeg';
+const WHISPER_NATIVE_EXTENSIONS = ['.wav', '.flac'];
 
 export async function checkFfmpegInstallation() {
   try {
@@ -15,6 +16,31 @@ export async function checkFfmpegInstallation() {
   }
 }
 
+export async function requireFfmpeg() {
+  const installed = await checkFfmpegInstallation();
+  if (!installed) {
+    throw new Error(
+      'ffmpeg is required for audio format conversion. Install with: brew install ffmpeg',
+    );
+  }
+}
+
+/**
+ * Converts audio to WAV if whisper cannot read it directly and `autoConvert` is on.
+ * @returns {Promise<{ processedPath: string, tempFile: string | null }>} `processedPath` is the
+ *   file to transcribe, and `tempFile` is a converted file for the caller to remove afterwards.
+ */
+export async function prepareAudio(audioPath, { autoConvert }) {
+  if (!autoConvert || isWhisperCompatible(audioPath)) {
+    return { processedPath: audioPath, tempFile: null };
+  }
+
+  await requireFfmpeg();
+  const wavPath = await convertToWav(audioPath);
+
+  return { processedPath: wavPath, tempFile: wavPath };
+}
+
 export async function getAudioInfo(audioPath) {
   if (!existsSync(audioPath)) {
     throw new Error(`Audio file not found: ${audioPath}`);
@@ -23,26 +49,49 @@ export async function getAudioInfo(audioPath) {
   const result = await runCommand(FFMPEG_BINARY, ['-i', audioPath, '-f', 'null', '-']);
   const output = result.stderr;
 
-  // Duration looks like "Duration: 00:01:23.45"
-  const durationMatch = output.match(/Duration: (\d+):(\d+):(\d+\.\d+)/);
-  const duration = durationMatch
-    ? Number(durationMatch[1]) * 3600 + Number(durationMatch[2]) * 60 + Number(durationMatch[3])
-    : 0;
-
   const formatMatch = output.match(/Input #0, ([^,]+)/);
   const format = formatMatch ? formatMatch[1] : 'unknown';
 
   const sampleRateMatch = output.match(/(\d+) Hz/);
   const sampleRate = sampleRateMatch ? Number(sampleRateMatch[1]) : 0;
 
-  return { duration, format, sampleRate, channels: parseChannelCount(output) };
+  return {
+    duration: parseDuration(output),
+    format,
+    sampleRate,
+    channels: parseChannelCount(output),
+  };
+}
+
+/** Returns the duration in seconds, from text such as "Duration: 00:01:23.45". */
+function parseDuration(ffmpegOutput) {
+  const match = ffmpegOutput.match(/Duration: (\d+):(\d+):(\d+\.\d+)/);
+  if (!match) {
+    return 0;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3]);
+
+  return hours * 3600 + minutes * 60 + seconds;
 }
 
 function parseChannelCount(ffmpegOutput) {
   const match = ffmpegOutput.match(/(mono|stereo|(\d+) channels)/);
-  if (!match) return 1;
-  if (match[1] === 'stereo') return 2;
-  if (match[1] === 'mono') return 1;
+
+  if (!match) {
+    return 1;
+  }
+
+  if (match[1] === 'stereo') {
+    return 2;
+  }
+
+  if (match[1] === 'mono') {
+    return 1;
+  }
+
   return Number(match[2]);
 }
 
@@ -88,14 +137,17 @@ export function planChunks(totalSeconds, chunkSeconds, overlapSeconds) {
 
   const chunks = [];
   let start = 0;
+  let reachedEnd = false;
 
-  while (true) {
+  while (!reachedEnd) {
     const duration = Math.min(chunkSeconds, totalSeconds - start);
     chunks.push({ start, duration });
 
-    if (start + chunkSeconds >= totalSeconds) return chunks;
+    reachedEnd = start + chunkSeconds >= totalSeconds;
     start += chunkSeconds - overlapSeconds;
   }
+
+  return chunks;
 }
 
 /**
@@ -149,5 +201,5 @@ export async function splitAudio(inputPath, totalSeconds, chunkSeconds, overlapS
 }
 
 export function isWhisperCompatible(audioPath) {
-  return ['.wav', '.flac'].includes(extname(audioPath).toLowerCase());
+  return WHISPER_NATIVE_EXTENSIONS.includes(extname(audioPath).toLowerCase());
 }

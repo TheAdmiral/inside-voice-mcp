@@ -1,11 +1,11 @@
 import { rm } from 'node:fs/promises';
 import { z } from 'zod';
-import { transcribe } from '../whisper/integration.js';
+import { transcribe } from '../whisper.js';
 import {
-  checkFfmpegInstallation,
-  convertToWav,
   getAudioInfo,
   isWhisperCompatible,
+  prepareAudio,
+  requireFfmpeg,
   splitAudio,
 } from '../utils/audio-converter.js';
 import { assembleTranscriptions, formatOutput } from '../utils/transcription-assembler.js';
@@ -31,57 +31,69 @@ const argsSchema = z.object({
   progress_callback: z.boolean().default(true).describe('Report progress during transcription'),
 });
 
+async function transcribeChunks(chunks, options, progress) {
+  // Every format is built from the joined segments, and only JSON output has them.
+  const chunkOptions = { ...options, output_format: 'json' };
+
+  const chunkTranscriptions = [];
+
+  for (const [index, chunk] of chunks.entries()) {
+    progress(`Transcribing chunk ${index + 1}/${chunks.length}...`);
+
+    try {
+      const result = await transcribe(chunk.path, chunkOptions);
+      chunkTranscriptions.push({ chunkIndex: index, startOffset: chunk.start, result });
+    } catch (error) {
+      throw new Error(`Failed to transcribe chunk ${index + 1}: ${error.message}`);
+    }
+  }
+
+  return chunkTranscriptions;
+}
+
 async function handler(args) {
   const { audio_path, options, chunk_duration_minutes, overlap_seconds, auto_cleanup } = args;
-  const progress = args.progress_callback ? (message) => console.error(message) : () => {};
+
+  function progress(message) {
+    if (args.progress_callback) {
+      console.error(message);
+    }
+  }
+
   const tempFiles = [];
 
   try {
-    if (!(await checkFfmpegInstallation())) {
-      throw new Error(
-        'ffmpeg is required for audio format conversion. Install with: brew install ffmpeg',
-      );
-    }
+    await requireFfmpeg();
 
     const audioInfo = await getAudioInfo(audio_path);
     progress(`Audio duration: ${Math.ceil(audioInfo.duration / 60)} minutes`);
 
-    let processedAudioPath = audio_path;
     if (!isWhisperCompatible(audio_path)) {
       progress('Converting audio to WAV format...');
-      processedAudioPath = await convertToWav(audio_path);
-      tempFiles.push(processedAudioPath);
+    }
+
+    const { processedPath, tempFile } = await prepareAudio(audio_path, { autoConvert: true });
+    if (tempFile) {
+      tempFiles.push(tempFile);
     }
 
     const chunks = await splitAudio(
-      processedAudioPath,
+      processedPath,
       audioInfo.duration,
       chunk_duration_minutes * 60,
       overlap_seconds,
     );
-    tempFiles.push(
-      ...chunks.map((chunk) => chunk.path).filter((path) => path !== processedAudioPath),
-    );
 
-    // Every format is built from the joined segments, and only JSON output has them.
-    const chunkOptions = { ...options, output_format: 'json' };
-
-    const chunkTranscriptions = [];
-
-    for (const [index, chunk] of chunks.entries()) {
-      progress(`Transcribing chunk ${index + 1}/${chunks.length}...`);
-
-      try {
-        const result = await transcribe(chunk.path, chunkOptions);
-        chunkTranscriptions.push({ chunkIndex: index, startOffset: chunk.start, result });
-      } catch (error) {
-        throw new Error(`Failed to transcribe chunk ${index + 1}: ${error.message}`);
+    for (const chunk of chunks) {
+      if (chunk.path !== processedPath) {
+        tempFiles.push(chunk.path);
       }
     }
 
+    const chunkTranscriptions = await transcribeChunks(chunks, options, progress);
+
     const assembledResult = assembleTranscriptions(chunkTranscriptions, {
       overlapSeconds: overlap_seconds,
-      removeOverlapDuplicates: true,
     });
 
     progress('Transcription completed successfully!');

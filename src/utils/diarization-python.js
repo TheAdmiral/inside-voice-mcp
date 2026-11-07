@@ -6,7 +6,7 @@ const PACKAGE_CHECK_TIMEOUT_MS = 30_000;
 const DIARIZATION_TIMEOUT_MS = 300_000;
 
 export class DiarizationError extends Error {
-  /** @param {'SETUP_ERROR' | 'INPUT_ERROR' | 'PROCESSING_ERROR'} code */
+  /** `code` is 'SETUP_ERROR', 'INPUT_ERROR' or 'PROCESSING_ERROR'. */
   constructor(code, message) {
     super(message);
     this.name = 'DiarizationError';
@@ -27,10 +27,7 @@ function buildPythonEnvironment() {
   };
 }
 
-/**
- * Returns the first Python executable that can import torch and pyannote.audio, or null.
- * @returns {Promise<string | null>}
- */
+/** Returns the first Python executable that can import torch and pyannote.audio, or null. */
 export async function findDiarizationPython() {
   const candidates = [
     process.env.PYTHON_EXECUTABLE,
@@ -61,14 +58,22 @@ export async function findDiarizationPython() {
 }
 
 /**
- * Runs python/diarize.py and returns the speaker segments.
- * @param {string} python
- * @param {{ audioPath: string, model: string, minSpeakers: number, maxSpeakers: number }} params
- * @returns {Promise<import('./diarization-alignment.js').DiarizationSegment[]>}
+ * Runs python/diarize.py and returns the speaker segments, and the device that was used.
+ * @param {{ audioPath: string, model: string, minSpeakers: number, maxSpeakers: number,
+ *   useMps: boolean }} params
+ * @returns {Promise<{ segments: import('./diarization-alignment.js').DiarizationSegment[],
+ *   device: string }>}
  */
 export async function runDiarization(python, params) {
-  const { audioPath, model, minSpeakers, maxSpeakers } = params;
-  const args = [DIARIZE_SCRIPT, audioPath, model, String(minSpeakers), String(maxSpeakers)];
+  const { audioPath, model, minSpeakers, maxSpeakers, useMps } = params;
+  const args = [
+    DIARIZE_SCRIPT,
+    audioPath,
+    model,
+    String(minSpeakers),
+    String(maxSpeakers),
+    String(useMps),
+  ];
 
   console.error(`[Diarization] Diarizing ${audioPath}`);
 
@@ -103,5 +108,5 @@ export async function runDiarization(python, params) {
     throw new DiarizationError('PROCESSING_ERROR', output.error);
   }
 
-  return output.segments ?? [];
+  return { segments: output.segments ?? [], device: output.device };
 }
