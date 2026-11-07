@@ -121,16 +121,6 @@ Add to your MCP client configuration:
 }
 ```
 
-## 📊 Performance
-
-**Apple Silicon Benchmarks:**
-- **Processing Speed**: 15.8x real-time (vs WhisperX 5.5x)
-- **Memory Usage**: <2GB (vs WhisperX ~4GB)
-- **GPU Acceleration**: ✅ Apple Neural Engine
-- **Setup**: Medium complexity but superior performance
-
-> **Disclaimer**: Benchmarks conducted with our specific configuration on Apple Silicon (M1). Your mileage may vary depending on hardware, audio characteristics, and parameter tuning.
-
 ### Model Comparison
 
 | Model | Size | Speed | Accuracy | Best For |
