@@ -97,7 +97,6 @@ Add to your MCP client configuration:
 | Tool | Description |
 |------|-------------|
 | `transcribe` | Basic audio transcription with automatic format conversion |
-| `transcribe_long` | Long audio file processing with chunking and format conversion |
 | `transcribe_with_speakers` | Speaker diarization and transcription with format support |
 | `list_models` | Show available whisper models |
 | `health_check` | System diagnostics |
@@ -113,7 +112,7 @@ Add to your MCP client configuration:
   - `temperature` (number): Sampling temperature 0-1 (default: 0)
   - `threads` (number): CPU threads to use (default: 4)
   - `translate` (boolean): Translate to English (default: false)
-  - `word_timestamps` (boolean): Add a `words` array with each word's start and end time to every segment in `metadata.segments`, also available from `transcribe_long` (default: false). Times are approximate, and languages written without spaces get one word per segment.
+  - `word_timestamps` (boolean): Add a `words` array with each word's start and end time to every segment in `metadata.segments` (default: false). Times are approximate, and languages written without spaces get one word per segment.
 
 **Example:**
 ```json

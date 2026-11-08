@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { formatCsv, formatSrt, formatTimestamp, formatVtt } from '../src/utils/subtitles.js';
+import { formatSrt, formatTimestamp, formatVtt } from '../src/utils/subtitles.js';
 
 const cues = [
   { start: 0, end: 1.5, text: 'Hello' },
@@ -35,15 +35,6 @@ test('formats SRT exactly', () => {
 test('no cues gives only the header for VTT and nothing for SRT', () => {
   assert.equal(formatVtt([]), 'WEBVTT\n\n');
   assert.equal(formatSrt([]), '');
-});
-
-test('formats CSV with millisecond times and quoted text', () => {
-  const csv = formatCsv([
-    { start: 0, end: 3.92, text: 'Hello, everyone' },
-    { start: 3.92, end: 8.48, text: 'She said "hi"' },
-  ]);
-
-  assert.equal(csv, 'start,end,text\n0,3920,"Hello, everyone"\n3920,8480,"She said ""hi"""\n');
 });
 
 test('timestamps survive floating point rounding', () => {

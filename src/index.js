@@ -22,13 +22,11 @@ import packageJson from '../package.json' with { type: 'json' };
 import { healthCheckTool } from './tools/health-check.js';
 import { listModelsTool } from './tools/list-models.js';
 import { transcribeTool } from './tools/transcribe.js';
-import { transcribeLongTool } from './tools/transcribe-long.js';
 import { transcribeWithSpeakersTool } from './tools/transcribe-with-speakers.js';
 import { versionTool } from './tools/version.js';
 
 const tools = [
   transcribeTool,
-  transcribeLongTool,
   transcribeWithSpeakersTool,
   listModelsTool,
   healthCheckTool,

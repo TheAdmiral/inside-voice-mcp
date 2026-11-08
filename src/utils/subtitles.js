@@ -33,27 +33,3 @@ export function formatVtt(cues) {
 export function formatSrt(cues) {
   return formatCues(cues, ',');
 }
-
-/**
- * Matches whisper-cli's terminal output, which is what `transcribe` returns for txt.
- * @param {Cue[]} cues
- */
-export function formatTimestampedText(cues) {
-  return cues
-    .map((cue) => `[${formatTimestamp(cue.start)} --> ${formatTimestamp(cue.end)}]   ${cue.text}`)
-    .join('\n');
-}
-
-/**
- * Matches whisper-cli's CSV output, with times in milliseconds.
- * @param {Cue[]} cues
- */
-export function formatCsv(cues) {
-  const rows = cues.map((cue) => {
-    const start = Math.round(cue.start * 1000);
-    const end = Math.round(cue.end * 1000);
-    return `${start},${end},"${cue.text.replaceAll('"', '""')}"\n`;
-  });
-
-  return `start,end,text\n${rows.join('')}`;
-}
