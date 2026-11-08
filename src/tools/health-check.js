@@ -1,12 +1,15 @@
 import { arch, cpus, platform } from 'node:os';
 import { z } from 'zod';
 import { checkInstallation, getAvailableModels, getModelsDir } from '../whisper.js';
+import { findHuggingFaceToken } from '../utils/huggingface-auth.js';
 import { jsonResult } from './tool-result.js';
 
 async function handler() {
   try {
     const installation = await checkInstallation();
     const availableModels = getAvailableModels();
+    // Only the source and any problem are used, so the token never reaches the tool output.
+    const { source: tokenSource, problem: tokenProblem } = await findHuggingFaceToken();
 
     const result = {
       whisper_installed: installation.installed,
@@ -14,6 +17,7 @@ async function handler() {
       models_directory: getModelsDir(),
       models_available: availableModels,
       recommended_model: determineRecommendedModel(availableModels),
+      huggingface_token_source: tokenSource,
       system_info: {
         platform: platform(),
         arch: arch(),
@@ -24,7 +28,7 @@ async function handler() {
     return jsonResult({
       status: installation.installed ? 'healthy' : 'needs_setup',
       ...result,
-      diagnostics: generateDiagnostics(result, installation.error),
+      diagnostics: generateDiagnostics(result, installation.error, tokenProblem),
       installation_error: installation.error,
     });
   } catch (error) {
@@ -51,7 +55,7 @@ function determineRecommendedModel(availableModels) {
   return availableModels[0] ?? 'base.en';
 }
 
-function generateDiagnostics(result, installationError) {
+function generateDiagnostics(result, installationError, tokenProblem) {
   const diagnostics = {
     overall_status: 'unknown',
     issues: [],
@@ -77,6 +81,18 @@ function generateDiagnostics(result, installationError) {
     diagnostics.issues.push('No whisper models found');
     diagnostics.recommendations.push(
       `Download models: npm run setup:models or manually download to ${result.models_directory}`,
+    );
+  }
+
+  // Check the HuggingFace token, which only speaker diarization needs
+  if (tokenProblem) {
+    if (diagnostics.overall_status !== 'critical') {
+      diagnostics.overall_status = 'warning';
+    }
+    diagnostics.issues.push(tokenProblem);
+  } else if (!result.huggingface_token_source) {
+    diagnostics.recommendations.push(
+      'For speaker diarization, store a HuggingFace token: npm run setup:token',
     );
   }
 

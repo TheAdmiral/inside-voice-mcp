@@ -30,3 +30,9 @@ test('a command killed by a signal is not a success', async () => {
 
   assert.notEqual(result.exitCode, 0);
 });
+
+test('sends input to the command on stdin', async () => {
+  const result = await runCommand('cat', [], { input: 'hello' });
+
+  assert.equal(result.stdout, 'hello');
+});

@@ -12,7 +12,8 @@
     "lint:fix": "oxlint src test scripts --fix",
     "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
-    "setup:models": "node scripts/setup-models.js"
+    "setup:models": "node scripts/setup-models.js",
+    "setup:token": "node scripts/setup-huggingface-auth.js"
   },
   "engines": {
     "node": ">=24.2"

@@ -60,10 +60,16 @@ Basic transcription works without any of this. Only speaker diarization needs it
    - Create an account at [huggingface.co](https://huggingface.co)
    - Generate a token at [Settings > Access Tokens](https://huggingface.co/settings/tokens)
    - Accept the license for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
-   - Set the environment variable:
+   - Store the token. You only need to do this once:
      ```bash
-     export HF_TOKEN="your_token_here"
+     npm run setup:token
      ```
+
+The token is saved in the macOS Keychain. If the Keychain is unavailable, for example on Linux, it is saved in `~/.inside-voice-mcp/config.json` instead, readable only by you. The server refuses to use that file if other users can read it.
+
+The server looks for the token in the `HF_TOKEN` environment variable first, then the Keychain, then the file. Run the `health_check` tool to see which one it found.
+
+To remove a stored token, run `security delete-generic-password -s inside-voice-mcp -a HF_TOKEN` or delete the file.
 
 ### MCP Client Configuration
 
@@ -84,7 +90,7 @@ Add to your MCP client configuration:
 
 - `WHISPER_MODELS_PATH`: Absolute path to your whisper models (default: `~/.inside-voice-mcp/models`)
 - `PYTHON_EXECUTABLE`: Python to use for speaker diarization (default: the first one found that has pyannote.audio)
-- `HF_TOKEN`: HuggingFace token for speaker diarization
+- `HF_TOKEN`: HuggingFace token for speaker diarization (default: the token stored by `npm run setup:token`)
 
 ## 🛠️ Available Tools
 

@@ -33,7 +33,7 @@ const HELP_TEXT = {
     'Setup Help:',
     '- Install Python: brew install python3',
     '- Install dependencies: pip install -r python/requirements.txt',
-    '- Set HF_TOKEN environment variable for Pyannote models',
+    '- Store your HuggingFace token for Pyannote models: npm run setup:token',
   ].join('\n'),
   INPUT_ERROR: '\n\nPlease check that the audio file exists and is accessible.',
   PROCESSING_ERROR: [

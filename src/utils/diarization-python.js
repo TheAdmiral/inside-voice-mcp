@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { findHuggingFaceToken } from './huggingface-auth.js';
 import { runCommand } from './run-command.js';
 
 const DIARIZE_SCRIPT = join(import.meta.dirname, '../../python/diarize.py');
@@ -14,8 +15,8 @@ export class DiarizationError extends Error {
   }
 }
 
-function buildPythonEnvironment() {
-  return {
+function buildPythonEnvironment(huggingFaceToken) {
+  const environment = {
     ...process.env,
     PYTHONUNBUFFERED: '1',
     PYTHONIOENCODING: 'utf-8',
@@ -25,6 +26,12 @@ function buildPythonEnvironment() {
     LC_ALL: 'en_US.UTF-8',
     LANG: 'en_US.UTF-8',
   };
+
+  if (huggingFaceToken) {
+    environment.HF_TOKEN = huggingFaceToken;
+  }
+
+  return environment;
 }
 
 /** Returns the first Python executable that can import torch and pyannote.audio, or null. */
@@ -75,12 +82,17 @@ export async function runDiarization(python, params) {
     String(useMps),
   ];
 
+  const { token, problem } = await findHuggingFaceToken();
+  if (problem) {
+    throw new DiarizationError('SETUP_ERROR', problem);
+  }
+
   console.error(`[Diarization] Diarizing ${audioPath}`);
 
   let result;
   try {
     result = await runCommand(python, args, {
-      env: buildPythonEnvironment(),
+      env: buildPythonEnvironment(token),
       timeout: DIARIZATION_TIMEOUT_MS,
     });
   } catch (error) {
