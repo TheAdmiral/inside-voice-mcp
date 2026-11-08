@@ -7,8 +7,8 @@ const MERGE_GAP_SECONDS = 1;
 
 /**
  * @typedef {{ start: number, end: number, speaker: string }} DiarizationSegment
- * @typedef {{ text: string, speaker: string, start: number, end: number,
- *   confidence: number }} SpeakerSegment
+ * @typedef {{ text: string, speaker: string, start: number, end: number, confidence: number,
+ *   words?: import('../whisper.js').Word[] }} SpeakerSegment
  */
 
 /**
@@ -36,16 +36,20 @@ function getSegmentsToAlign(transcription, diarization) {
 
 /** A segment with no good speaker match stays in the output, so its text is never lost. */
 function assignSpeaker(transcriptionSegment, diarization) {
-  const { text, start, end } = transcriptionSegment;
+  const { text, start, end, words } = transcriptionSegment;
   const { bestMatch, maxOverlap } = findBestSpeaker(transcriptionSegment, diarization);
   const confidence = maxOverlap / (end - start);
 
   const isGoodMatch = maxOverlap > MIN_OVERLAP_SECONDS && confidence >= MIN_CONFIDENCE;
-  if (!isGoodMatch) {
-    return { text, speaker: UNKNOWN_SPEAKER, start, end, confidence: 0 };
+  const aligned = isGoodMatch
+    ? { text, speaker: normalizeSpeakerLabel(bestMatch.speaker), start, end, confidence }
+    : { text, speaker: UNKNOWN_SPEAKER, start, end, confidence: 0 };
+
+  if (words) {
+    aligned.words = words;
   }
 
-  return { text, speaker: normalizeSpeakerLabel(bestMatch.speaker), start, end, confidence };
+  return aligned;
 }
 
 function findBestSpeaker(transcriptionSegment, diarization) {
@@ -63,7 +67,21 @@ function findBestSpeaker(transcriptionSegment, diarization) {
   return { bestMatch, maxOverlap };
 }
 
-/** @param {SpeakerSegment[]} segments */
+/** Follows whisper-cli's CSV output, with times in milliseconds, and adds the speaker. */
+function formatSpeakerCsv(segments) {
+  const rows = segments.map((segment) => {
+    const start = Math.round(segment.start * 1000);
+    const end = Math.round(segment.end * 1000);
+    return `${start},${end},${segment.speaker},"${segment.text.replaceAll('"', '""')}"\n`;
+  });
+
+  return `start,end,speaker,text\n${rows.join('')}`;
+}
+
+/**
+ * Text for `json` is the same as for `txt`, because JSON callers get the segments in metadata.
+ * @param {SpeakerSegment[]} segments
+ */
 export function formatSpeakerSegments(segments, format) {
   switch (format) {
     case 'vtt':
@@ -77,8 +95,8 @@ export function formatSpeakerSegments(segments, format) {
       return formatSrt(
         segments.map((segment) => ({ ...segment, text: `[${segment.speaker}]: ${segment.text}` })),
       );
-    case 'json':
-      return JSON.stringify(segments, null, 2);
+    case 'csv':
+      return formatSpeakerCsv(segments);
     default:
       return segments.map((segment) => `[${segment.speaker}]: ${segment.text}`).join('\n');
   }
@@ -116,6 +134,9 @@ function mergeNeighbours(segments) {
       current.text += ' ' + segment.text;
       current.end = segment.end;
       current.confidence = Math.min(current.confidence, segment.confidence);
+      if (segment.words) {
+        current.words = [...(current.words ?? []), ...segment.words];
+      }
     } else {
       if (current) {
         merged.push(current);

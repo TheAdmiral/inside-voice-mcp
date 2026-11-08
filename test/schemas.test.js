@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { z } from 'zod';
-import { DiarizationOptionsSchema, TranscribeOptionsSchema } from '../src/schemas.js';
+import { TranscribeOptionsSchema } from '../src/schemas.js';
 import { transcribeTool } from '../src/tools/transcribe.js';
-import { transcribeWithSpeakersTool } from '../src/tools/transcribe-with-speakers.js';
 
 test('option defaults apply when options is omitted', () => {
   const args = transcribeTool.argsSchema.parse({ audio_path: 'a.wav' });
@@ -19,15 +18,23 @@ test('option defaults apply when options is omitted', () => {
     word_timestamps: false,
     max_len: 0,
     split_on_word: false,
+    diarize: false,
+    min_speakers: 1,
+    max_speakers: 10,
+    use_mps: true,
   });
 });
 
-test('diarization option defaults apply when options is omitted', () => {
-  const args = transcribeWithSpeakersTool.argsSchema.parse({ audio_file_path: 'a.wav' });
-
-  assert.equal(args.options.model, 'pyannote');
-  assert.equal(args.options.max_speakers, 10);
-  assert.equal(args.options.output_format, 'json');
+test('min_speakers cannot be greater than max_speakers', () => {
+  assert.equal(
+    TranscribeOptionsSchema.safeParse({ min_speakers: 3, max_speakers: 2 }).success,
+    false,
+  );
+  assert.equal(
+    TranscribeOptionsSchema.safeParse({ min_speakers: 2, max_speakers: 2 }).success,
+    true,
+  );
+  assert.equal(TranscribeOptionsSchema.safeParse({ min_speakers: 11 }).success, false);
 });
 
 test('partial options keep the defaults for the other fields', () => {
@@ -44,12 +51,6 @@ test('an invalid model is rejected', () => {
   });
 
   assert.equal(result.success, false);
-  assert.equal(DiarizationOptionsSchema.safeParse({ whisper_model: 'huge' }).success, false);
-});
-
-test('only implemented diarization models are accepted', () => {
-  assert.equal(DiarizationOptionsSchema.safeParse({ model: 'pyannote' }).success, true);
-  assert.equal(DiarizationOptionsSchema.safeParse({ model: 'simple-diarizer' }).success, false);
 });
 
 test('any language code is accepted', () => {

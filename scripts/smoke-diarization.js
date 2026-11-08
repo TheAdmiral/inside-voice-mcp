@@ -1,29 +1,22 @@
 import { join } from 'node:path';
-import { transcribeWithSpeakersTool } from '../src/tools/transcribe-with-speakers.js';
+import { transcribeTool } from '../src/tools/transcribe.js';
 
-async function testDiarization() {
-  try {
-    const audioPath = join(import.meta.dirname, '../test/fixtures/sample_meeting_40_seconds.wav');
-    console.log('Testing speaker diarization with:', audioPath);
+// Pass a model name to use something other than base.en.
+const model = process.argv[2] ?? 'base.en';
+const audioPath = join(import.meta.dirname, '../test/fixtures/sample_meeting_40_seconds.wav');
 
-    const result = await transcribeWithSpeakersTool.handler({
-      audio_file_path: audioPath,
-      options: {
-        model: 'pyannote',
-        min_speakers: 2,
-        max_speakers: 5,
-        whisper_model: 'base.en',
-        output_format: 'txt',
-        use_mps: true,
-      },
-      auto_convert: true,
-    });
+try {
+  console.log('Testing speaker diarization with:', audioPath);
 
-    console.log('\n=== SPEAKER DIARIZATION RESULTS ===');
-    console.log(result.content[0].text);
-  } catch (error) {
-    console.error('Error:', error.message);
-  }
+  const args = transcribeTool.argsSchema.parse({
+    audio_path: audioPath,
+    options: { model, diarize: true, min_speakers: 2, max_speakers: 5 },
+  });
+  const result = await transcribeTool.handler(args);
+
+  console.log('\n=== SPEAKER DIARIZATION RESULTS ===');
+  console.log(result.content[0].text);
+} catch (error) {
+  console.error('Error:', error.message);
+  process.exitCode = 1;
 }
-
-testDiarization();

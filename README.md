@@ -24,7 +24,7 @@ Inside Voice is a high-performance Model Context Protocol (MCP) server providing
 - Node.js 24.2+
 - whisper.cpp (`brew install whisper-cpp`)
 - **For audio format conversion**: ffmpeg (`brew install ffmpeg`) - automatically handles MP3, M4A, FLAC, OGG, etc.
-- **For speaker diarization**: Python 3.8+ and HuggingFace token (free)
+- **For speaker diarization**: Python 3.13 and HuggingFace token (free)
 
 ### Supported Audio Formats
 
@@ -51,15 +51,22 @@ npm run setup:models -- tiny.en small.en
 
 Basic transcription works without any of this. Only speaker diarization needs it.
 
-1. Install the Python dependencies:
+1. Install the Python dependencies in a virtual environment. Use Python 3.13, because the PyTorch version that pyannote needs is not available for the newest Python releases:
    ```bash
-   pip install -r python/requirements.txt
+   brew install python@3.13
+   python3.13 -m venv ~/.inside-voice-mcp/venv
+   ~/.inside-voice-mcp/venv/bin/pip install -r python/requirements.txt
    ```
 
-2. Get a free HuggingFace token:
+2. Tell the server to use that Python by adding `PYTHON_EXECUTABLE` to your MCP client configuration, using the full path to your home directory:
+   ```json
+   "env": { "PYTHON_EXECUTABLE": "/Users/you/.inside-voice-mcp/venv/bin/python" }
+   ```
+
+3. Get a free HuggingFace token:
    - Create an account at [huggingface.co](https://huggingface.co)
    - Generate a token at [Settings > Access Tokens](https://huggingface.co/settings/tokens)
-   - Accept the license for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+   - Accept the licenses for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) and [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
    - Store the token. You only need to do this once:
      ```bash
      npm run setup:token
@@ -96,8 +103,7 @@ Add to your MCP client configuration:
 
 | Tool | Description |
 |------|-------------|
-| `transcribe` | Basic audio transcription with automatic format conversion |
-| `transcribe_with_speakers` | Speaker diarization and transcription with format support |
+| `transcribe` | Audio transcription of any length, with automatic format conversion and optional speaker diarization |
 | `list_models` | Show available whisper models |
 | `health_check` | System diagnostics |
 | `version` | Server version information |
@@ -113,6 +119,12 @@ Add to your MCP client configuration:
   - `threads` (number): CPU threads to use (default: 4)
   - `translate` (boolean): Translate to English (default: false)
   - `word_timestamps` (boolean): Add a `words` array with each word's start and end time to every segment in `metadata.segments` (default: false). Times are approximate, and languages written without spaces get one word per segment.
+  - `diarize` (boolean): Identify who is speaking in each segment, which needs the [diarization setup](#speaker-diarization-setup-optional) (default: false)
+  - `min_speakers` (number): Fewest speakers to look for (default: 1)
+  - `max_speakers` (number): Most speakers to look for (default: 10)
+  - `use_mps` (boolean): Use MPS acceleration on Apple Silicon when identifying speakers (default: true)
+
+With `diarize`, each format includes the speaker. The speakers found are listed in `metadata.speakers`, and each segment in `metadata.segments` has a `speaker`.
 
 **Example:**
 ```json
@@ -121,7 +133,9 @@ Add to your MCP client configuration:
   "options": {
     "model": "base.en",
     "output_format": "json",
-    "word_timestamps": true
+    "word_timestamps": true,
+    "diarize": true,
+    "max_speakers": 4
   }
 }
 ```

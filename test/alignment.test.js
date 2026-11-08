@@ -99,5 +99,29 @@ test('formats speaker segments', () => {
     formatSpeakerSegments(segments, 'srt'),
     '1\n00:00:00,000 --> 00:00:01,500\n[speaker01]: Hi\n\n',
   );
-  assert.deepEqual(JSON.parse(formatSpeakerSegments(segments, 'json')), segments);
+  assert.equal(formatSpeakerSegments(segments, 'json'), '[speaker01]: Hi');
+});
+
+test('formats speaker CSV with millisecond times and quoted text', () => {
+  const segments = [{ start: 0, end: 1.5, speaker: 'speaker01', text: 'She said "hi"' }];
+
+  assert.equal(
+    formatSpeakerSegments(segments, 'csv'),
+    'start,end,speaker,text\n0,1500,speaker01,"She said ""hi"""\n',
+  );
+});
+
+test('merged segments keep the words of both', () => {
+  const first = { start: 0, end: 1, text: 'One' };
+  const second = { start: 1, end: 2, text: 'Two' };
+  const result = alignTranscriptionWithSpeakers(
+    transcription([
+      { ...first, words: [first] },
+      { ...second, words: [second] },
+    ]),
+    [{ start: 0, end: 2, speaker: 'SPEAKER_00' }],
+  );
+
+  assert.equal(result.length, 1);
+  assert.deepEqual(result[0].words, [first, second]);
 });

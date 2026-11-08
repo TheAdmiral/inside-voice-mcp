@@ -24,7 +24,6 @@ test('lists every tool', async () => {
     'health_check',
     'list_models',
     'transcribe',
-    'transcribe_with_speakers',
     'version',
   ]);
 });

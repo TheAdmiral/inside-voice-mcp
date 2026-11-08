@@ -2,7 +2,7 @@
 """
 Speaker diarization for Inside Voice.
 
-Usage: diarize.py AUDIO_PATH MODEL MIN_SPEAKERS MAX_SPEAKERS USE_MPS
+Usage: diarize.py AUDIO_PATH MIN_SPEAKERS MAX_SPEAKERS USE_MPS
 USE_MPS is "true" or "false".
 Prints one JSON object on stdout. Progress and errors go to stderr.
 """
@@ -48,7 +48,18 @@ def diarize_with_pyannote(audio_path, min_speakers, max_speakers, use_mps):
             "pyannote/speaker-diarization-3.1",
             use_auth_token=hf_token
         )
-        
+
+        # pyannote returns None instead of raising when it cannot download the gated models
+        if pipeline is None:
+            return {
+                "error": (
+                    "Could not download the pyannote models. Check that your HuggingFace token "
+                    "is stored (npm run setup:token) and that you have accepted the licences for "
+                    "pyannote/speaker-diarization-3.1 and pyannote/segmentation-3.0."
+                ),
+                "code": "SETUP_ERROR"
+            }
+
         # Move to device
         if hasattr(pipeline, 'to') and device != "cpu":
             pipeline.to(device)
@@ -89,18 +100,12 @@ def diarize_with_pyannote(audio_path, min_speakers, max_speakers, use_mps):
 def main():
     try:
         audio_path = sys.argv[1]
-        model = sys.argv[2]
-        min_speakers = int(sys.argv[3])
-        max_speakers = int(sys.argv[4])
-        use_mps = sys.argv[5] == "true"
-        
-        print(f"Starting diarization with {model} model", file=sys.stderr)
-        
-        if model == "pyannote":
-            result = diarize_with_pyannote(audio_path, min_speakers, max_speakers, use_mps)
-        else:
-            result = {"error": f"Unsupported model: {model}"}
-        
+        min_speakers = int(sys.argv[2])
+        max_speakers = int(sys.argv[3])
+        use_mps = sys.argv[4] == "true"
+
+        result = diarize_with_pyannote(audio_path, min_speakers, max_speakers, use_mps)
+
         # Output result as JSON
         print(json.dumps(result))
         

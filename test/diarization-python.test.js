@@ -30,7 +30,7 @@ echo '{"segments":[{"start":0,"end":1,"speaker":"SPEAKER_00"}],"device":"cpu"}'
   return { pythonPath, argsPath, tokenPath };
 }
 
-const params = { audioPath: 'a.wav', model: 'pyannote', minSpeakers: 1, maxSpeakers: 2 };
+const params = { audioPath: 'a.wav', minSpeakers: 1, maxSpeakers: 2 };
 
 for (const useMps of [true, false]) {
   test(`passes useMps ${useMps} to the script`, async (t) => {
@@ -39,9 +39,48 @@ for (const useMps of [true, false]) {
     await runDiarization(pythonPath, { ...params, useMps });
 
     const args = readFileSync(argsPath, 'utf-8').trim().split(' ');
-    assert.deepEqual(args.slice(1), ['a.wav', 'pyannote', '1', '2', String(useMps)]);
+    assert.deepEqual(args.slice(1), ['a.wav', '1', '2', String(useMps)]);
   });
 }
+
+function writeFailingPython(t, script) {
+  const { pythonPath } = setUpFakePython(t);
+  writeFileSync(pythonPath, `#!/bin/sh\n${script}\nexit 1\n`);
+  return pythonPath;
+}
+
+test('reports the error from the script even after other stdout output', async (t) => {
+  const pythonPath = writeFailingPython(
+    t,
+    `echo "Could not download the pipeline"
+echo "Loading..." >&2
+echo '{"error":"Check your token","code":"SETUP_ERROR"}'`,
+  );
+
+  await assert.rejects(runDiarization(pythonPath, { ...params, useMps: false }), {
+    name: 'DiarizationError',
+    code: 'SETUP_ERROR',
+    message: 'Check your token',
+  });
+});
+
+test('a script error without a code is a processing error', async (t) => {
+  const pythonPath = writeFailingPython(t, `echo '{"error":"It broke"}'`);
+
+  await assert.rejects(runDiarization(pythonPath, { ...params, useMps: false }), {
+    code: 'PROCESSING_ERROR',
+    message: 'It broke',
+  });
+});
+
+test('a crash with no JSON reports stderr', async (t) => {
+  const pythonPath = writeFailingPython(t, 'echo "Segmentation fault" >&2');
+
+  await assert.rejects(
+    runDiarization(pythonPath, { ...params, useMps: false }),
+    /exit code 1\): Segmentation fault/,
+  );
+});
 
 test('passes the HuggingFace token to the script', async (t) => {
   const { pythonPath, tokenPath } = setUpFakePython(t);

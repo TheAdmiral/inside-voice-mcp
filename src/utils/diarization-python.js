@@ -4,10 +4,9 @@ import { runCommand } from './run-command.js';
 
 const DIARIZE_SCRIPT = join(import.meta.dirname, '../../python/diarize.py');
 const PACKAGE_CHECK_TIMEOUT_MS = 30_000;
-const DIARIZATION_TIMEOUT_MS = 300_000;
 
 export class DiarizationError extends Error {
-  /** `code` is 'SETUP_ERROR', 'INPUT_ERROR' or 'PROCESSING_ERROR'. */
+  /** `code` is 'SETUP_ERROR' or 'PROCESSING_ERROR'. */
   constructor(code, message) {
     super(message);
     this.name = 'DiarizationError';
@@ -66,17 +65,17 @@ export async function findDiarizationPython() {
 
 /**
  * Runs python/diarize.py and returns the speaker segments, and the device that was used.
- * @param {{ audioPath: string, model: string, minSpeakers: number, maxSpeakers: number,
+ * There is no timeout, because the time needed grows with the length of the audio.
+ * @param {{ audioPath: string, minSpeakers: number, maxSpeakers: number,
  *   useMps: boolean }} params
  * @returns {Promise<{ segments: import('./diarization-alignment.js').DiarizationSegment[],
  *   device: string }>}
  */
 export async function runDiarization(python, params) {
-  const { audioPath, model, minSpeakers, maxSpeakers, useMps } = params;
+  const { audioPath, minSpeakers, maxSpeakers, useMps } = params;
   const args = [
     DIARIZE_SCRIPT,
     audioPath,
-    model,
     String(minSpeakers),
     String(maxSpeakers),
     String(useMps),
@@ -91,12 +90,15 @@ export async function runDiarization(python, params) {
 
   let result;
   try {
-    result = await runCommand(python, args, {
-      env: buildPythonEnvironment(token),
-      timeout: DIARIZATION_TIMEOUT_MS,
-    });
+    result = await runCommand(python, args, { env: buildPythonEnvironment(token) });
   } catch (error) {
     throw new DiarizationError('PROCESSING_ERROR', `Script execution failed: ${error.message}`);
+  }
+
+  // The script reports its own errors as JSON, which explain more than its exit code does.
+  const output = parseScriptOutput(result.stdout);
+  if (output?.error) {
+    throw new DiarizationError(output.code ?? 'PROCESSING_ERROR', output.error);
   }
 
   if (result.exitCode !== 0) {
@@ -106,19 +108,21 @@ export async function runDiarization(python, params) {
     );
   }
 
-  let output;
-  try {
-    output = JSON.parse(result.stdout);
-  } catch (error) {
-    throw new DiarizationError(
-      'PROCESSING_ERROR',
-      `Failed to parse diarization output: ${error.message}`,
-    );
-  }
-
-  if (output.error) {
-    throw new DiarizationError('PROCESSING_ERROR', output.error);
+  if (!output) {
+    throw new DiarizationError('PROCESSING_ERROR', 'The diarization script gave no valid result.');
   }
 
   return { segments: output.segments ?? [], device: output.device };
+}
+
+/** Returns the script's JSON result, or null if there isn't one. */
+function parseScriptOutput(stdout) {
+  // Libraries can print to stdout as well, but the script always prints its JSON last.
+  const lastLine = stdout.trim().split('\n').at(-1);
+
+  try {
+    return JSON.parse(lastLine);
+  } catch {
+    return null;
+  }
 }
