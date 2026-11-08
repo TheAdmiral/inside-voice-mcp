@@ -120,6 +120,11 @@ export function buildWhisperArgs(audioPath, modelPath, outputBase, options) {
 
   args.push(OUTPUT_FORMAT_FLAGS[options.output_format]);
 
+  // Only the JSON file reports the detected language, so every format needs it.
+  if (options.output_format !== 'json') {
+    args.push(OUTPUT_FORMAT_FLAGS.json);
+  }
+
   // Word timestamps need the full JSON output, which is written alongside the chosen format.
   if (options.word_timestamps) {
     args.push('--output-json-full');
@@ -219,25 +224,38 @@ async function readJsonOutput(outputBase) {
   return parseWhisperJson(JSON.parse(jsonText));
 }
 
+/** whisper starts the text of every cue with a space that is not part of the transcript. */
+function removeSpaceBeforeCueText(fileText, format) {
+  if (format === 'csv') {
+    return fileText.replace(/^(\d+,\d+,") +/gm, '$1');
+  }
+
+  return fileText.replace(/^ +/gm, '');
+}
+
+async function readFormattedText(outputBase, stdout, format) {
+  // stdout is always timestamped text, so other formats only exist in their output file.
+  if (format === 'txt') {
+    return stdout;
+  }
+
+  const fileText = await readFile(`${outputBase}.${format}`, 'utf-8');
+  return removeSpaceBeforeCueText(fileText, format);
+}
+
 async function readWhisperOutput(outputBase, stdout, options) {
   const { output_format, word_timestamps } = options;
+  const jsonOutput = await readJsonOutput(outputBase);
 
   if (output_format === 'json') {
-    return readJsonOutput(outputBase);
+    return jsonOutput;
   }
 
-  // stdout is always timestamped text, so other formats only exist in their output file.
-  let text = stdout;
-  if (output_format !== 'txt') {
-    text = await readFile(`${outputBase}.${output_format}`, 'utf-8');
-  }
-
-  const output = { text: text.trim(), language: 'en' };
+  const text = await readFormattedText(outputBase, stdout, output_format);
+  const output = { text: text.trim(), language: jsonOutput.language };
 
   if (word_timestamps) {
-    const { segments, language } = await readJsonOutput(outputBase);
-    output.segments = segments;
-    output.language = language;
+    output.segments = jsonOutput.segments;
   }
 
   return output;

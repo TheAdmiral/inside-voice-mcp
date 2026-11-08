@@ -35,8 +35,15 @@ test('builds the default arguments', () => {
     '--temperature',
     '0',
     '--output-txt',
+    '--output-json',
     '--no-prints',
   ]);
+});
+
+test('asks for the JSON file only once when JSON is the chosen format', () => {
+  const args = buildWhisperArgs('a.wav', 'm.bin', 'out', options({ output_format: 'json' }));
+
+  assert.equal(args.filter((arg) => arg === '--output-json').length, 1);
 });
 
 test('maps each output format to its flag', () => {
@@ -138,6 +145,13 @@ test('a missing models directory gives no models', (t) => {
   assert.deepEqual(getAvailableModels(), []);
 });
 
+/** What the fake whisper-cli's cue files should come back as, without the leading spaces. */
+const EXPECTED_CUE_FILES = {
+  srt: '1\n00:00:00,000 --> 00:00:01,000\nhello',
+  vtt: 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhello',
+  csv: 'start,end,text\n0,1000,"hello"',
+};
+
 /** Puts a fake whisper-cli on the PATH that writes output files and records where it put them. */
 function setUpFakeWhisper(t, { exitCode = 0 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'inside-voice-fake-whisper-'));
@@ -158,9 +172,11 @@ while [ $# -gt 0 ]; do
   shift
 done
 printf '%s' "$out" > "${recordPath}"
-echo '{"transcription":[{"text":" hello","offsets":{"from":0,"to":1000}}]}' > "$out.json"
+echo '{"result":{"language":"sv"},"transcription":[{"text":" hello","offsets":{"from":0,"to":1000}}]}' > "$out.json"
 echo hello > "$out.txt"
-for format in srt vtt csv; do echo "$format file" > "$out.$format"; done
+printf '1\\n00:00:00,000 --> 00:00:01,000\\n hello\\n' > "$out.srt"
+printf 'WEBVTT\\n\\n00:00:00.000 --> 00:00:01.000\\n hello\\n' > "$out.vtt"
+printf 'start,end,text\\n0,1000," hello"\\n' > "$out.csv"
 echo hello
 exit ${exitCode}
 `,
@@ -205,7 +221,17 @@ for (const output_format of ['srt', 'vtt', 'csv']) {
 
     const result = await transcribe(audioPath, options({ model: 'tiny.en', output_format }));
 
-    assert.equal(result.text, `${output_format} file`);
+    assert.equal(result.text, EXPECTED_CUE_FILES[output_format]);
+  });
+}
+
+for (const output_format of ['txt', 'srt', 'vtt', 'csv', 'json']) {
+  test(`${output_format} transcription reports the detected language`, async (t) => {
+    const { audioPath } = setUpFakeWhisper(t);
+
+    const result = await transcribe(audioPath, options({ model: 'tiny.en', output_format }));
+
+    assert.equal(result.language, 'sv');
   });
 }
 
@@ -218,7 +244,7 @@ for (const output_format of ['srt', 'vtt', 'csv']) {
       options({ model: 'tiny.en', output_format, word_timestamps: true }),
     );
 
-    assert.equal(result.text, `${output_format} file`);
+    assert.equal(result.text, EXPECTED_CUE_FILES[output_format]);
     assert.deepEqual(result.segments, [{ start: 0, end: 1, text: 'hello' }]);
   });
 }
