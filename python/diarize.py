@@ -28,11 +28,21 @@ def setup_device(use_mps):
         print("PyTorch not available, falling back to CPU", file=sys.stderr)
         return "cpu"
 
+def allow_pyannote_checkpoint_classes():
+    """Let PyTorch's safe loading accept the classes stored in the pyannote checkpoints"""
+    import torch
+    from pyannote.audio.core.task import Problem, Resolution, Specifications
+    from torch.torch_version import TorchVersion
+
+    torch.serialization.add_safe_globals([TorchVersion, Problem, Resolution, Specifications])
+
 def diarize_with_pyannote(audio_path, min_speakers, max_speakers, use_mps):
     """Run diarization using Pyannote.audio 3.1+"""
     try:
         from pyannote.audio import Pipeline
-        
+
+        allow_pyannote_checkpoint_classes()
+
         device = setup_device(use_mps)
         print(f"Processing: {audio_path}", file=sys.stderr)
         print(f"Speaker range: {min_speakers}-{max_speakers}", file=sys.stderr)
