@@ -1,7 +1,8 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { getModelPath, getModelsDir } from './models.js';
 import { runCommand } from './utils/run-command.js';
 
 const WHISPER_BINARY = 'whisper-cli';
@@ -21,11 +22,6 @@ const OUTPUT_FORMAT_FLAGS = {
  *   processing_time: number }} TranscriptionResult
  */
 
-/** Returns the directory whisper models are stored in. */
-export function getModelsDir() {
-  return process.env.WHISPER_MODELS_PATH || join(homedir(), '.inside-voice-mcp', 'models');
-}
-
 /**
  * `options` are validated options, see TranscribeOptionsSchema in schemas.js.
  * @returns {Promise<TranscriptionResult>}
@@ -37,10 +33,12 @@ export async function transcribe(audioPath, options) {
     throw new Error(`Audio file error: ${audioPath} - File does not exist`);
   }
 
-  const modelsDir = getModelsDir();
-  const modelPath = join(modelsDir, `ggml-${options.model}.bin`);
+  const modelPath = getModelPath(options.model);
   if (!existsSync(modelPath)) {
-    throw new Error(`Model '${options.model}' not found in ${modelsDir}`);
+    throw new Error(
+      `Model '${options.model}' is not installed in ${getModelsDir()}. ` +
+        `Install it with: npm run models -- install ${options.model}`,
+    );
   }
 
   // whisper-cli writes its output files to disk, so keep them away from the user's audio.
@@ -66,17 +64,6 @@ export async function transcribe(audioPath, options) {
   } finally {
     await rm(outputDir, { recursive: true, force: true });
   }
-}
-
-export function getAvailableModels() {
-  const modelsDir = getModelsDir();
-  if (!existsSync(modelsDir)) {
-    return [];
-  }
-
-  return readdirSync(modelsDir)
-    .filter((file) => file.endsWith('.bin'))
-    .map((file) => file.replace('ggml-', '').replace('.bin', ''));
 }
 
 export async function checkInstallation() {

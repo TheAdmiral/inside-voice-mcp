@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { z } from 'zod';
+import { REGULAR_MODEL_NAMES } from '../src/models.js';
 import { TranscribeOptionsSchema } from '../src/schemas.js';
 import { transcribeTool } from '../src/tools/transcribe.js';
 
@@ -44,13 +45,25 @@ test('partial options keep the defaults for the other fields', () => {
   assert.equal(options.threads, 4);
 });
 
-test('an invalid model is rejected', () => {
-  const result = transcribeTool.argsSchema.safeParse({
-    audio_path: 'a.wav',
-    options: { model: 'huge' },
-  });
+test('every regular model is accepted', () => {
+  for (const model of REGULAR_MODEL_NAMES) {
+    assert.equal(TranscribeOptionsSchema.parse({ model }).model, model);
+  }
+});
 
-  assert.equal(result.success, false);
+test('advanced model names are accepted, to be checked once transcription starts', () => {
+  assert.equal(TranscribeOptionsSchema.parse({ model: 'large-v3-q5_0' }).model, 'large-v3-q5_0');
+});
+
+test('a model name that could lead outside the models directory is rejected', () => {
+  for (const model of ['../secret', 'models/tiny.en', '.hidden', '']) {
+    const result = transcribeTool.argsSchema.safeParse({
+      audio_path: 'a.wav',
+      options: { model },
+    });
+
+    assert.equal(result.success, false, `${model} should be rejected`);
+  }
 });
 
 test('any language code is accepted', () => {

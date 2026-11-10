@@ -1,96 +1,80 @@
 import { z } from 'zod';
-import { getAvailableModels, getModelsDir } from '../whisper.js';
+import {
+  DEFAULT_MODEL,
+  REGULAR_MODELS,
+  describeModel,
+  findRegularModel,
+  formatSize,
+  getInstalledModels,
+  getModelsDir,
+} from '../models.js';
 import { jsonResult } from './tool-result.js';
 
-// Ratings go from 1 to 5. For speed 5 is fastest, for accuracy 5 is most accurate.
-const MODEL_INFO = {
-  'tiny.en': {
-    name: 'tiny.en',
-    size: '39 MB',
-    description: 'Smallest English-only model, fastest processing',
-    languages: ['en'],
-    speed_rating: 5,
-    accuracy_rating: 2,
-    recommended_for: ['quick transcription', 'real-time processing', 'low-resource environments'],
-  },
-  'base.en': {
-    name: 'base.en',
-    size: '142 MB',
-    description: 'Balanced English-only model, good speed/accuracy trade-off',
-    languages: ['en'],
-    speed_rating: 4,
-    accuracy_rating: 3,
-    recommended_for: ['general transcription', 'Apple Silicon', 'balanced performance'],
-  },
-  'small.en': {
-    name: 'small.en',
-    size: '488 MB',
-    description: 'Higher accuracy English-only model',
-    languages: ['en'],
-    speed_rating: 3,
-    accuracy_rating: 4,
-    recommended_for: ['high accuracy needs', 'clear audio', 'professional transcription'],
-  },
-  base: {
-    name: 'base',
-    size: '142 MB',
-    description: 'Multilingual base model',
-    languages: ['99 languages'],
-    speed_rating: 4,
-    accuracy_rating: 3,
-    recommended_for: ['multilingual content', 'language detection', 'general purpose'],
-  },
-  small: {
-    name: 'small',
-    size: '488 MB',
-    description: 'Higher accuracy multilingual model',
-    languages: ['99 languages'],
-    speed_rating: 3,
-    accuracy_rating: 4,
-    recommended_for: ['multilingual high accuracy', 'professional use', 'diverse content'],
-  },
-};
+function describeInstalledModel(model) {
+  const regularModel = findRegularModel(model.name);
+
+  if (regularModel) {
+    return {
+      model: model.name,
+      available: true,
+      type: 'regular',
+      size: formatSize(model.size_bytes),
+      ...regularModel,
+    };
+  }
+
+  return {
+    model: model.name,
+    available: true,
+    type: 'advanced',
+    size: formatSize(model.size_bytes),
+    description: describeModel(model.name),
+  };
+}
+
+// Only installed models are listed with a size, because the server never goes online.
+function describeMissingModel(regularModel) {
+  return {
+    model: regularModel.name,
+    available: false,
+    type: 'regular',
+    ...regularModel,
+    download_note: `Install with the model manager: npm run models -- install ${regularModel.name}`,
+  };
+}
 
 async function handler() {
-  const availableModels = getAvailableModels();
+  const installedModels = getInstalledModels();
+  const installedNames = installedModels.map((model) => model.name);
 
-  const downloaded = availableModels.map((model) => ({
-    model,
-    available: true,
-    ...MODEL_INFO[model],
-  }));
-
-  const notDownloaded = Object.keys(MODEL_INFO)
-    .filter((model) => !availableModels.includes(model))
-    .map((model) => ({
-      model,
-      available: false,
-      ...MODEL_INFO[model],
-      download_note: 'Model not downloaded - use setup:models script or download manually',
-    }));
+  const missingRegularModels = REGULAR_MODELS.filter(
+    (regularModel) => !installedNames.includes(regularModel.name),
+  );
 
   return jsonResult({
-    available_models: downloaded,
-    not_downloaded: notDownloaded,
-    recommended_for_apple_silicon: 'base.en',
+    available_models: installedModels.map(describeInstalledModel),
+    not_downloaded: missingRegularModels.map(describeMissingModel),
+    recommended_for_apple_silicon: DEFAULT_MODEL,
     performance_notes: {
       fastest: 'tiny.en',
-      balanced: 'base.en',
-      most_accurate: 'small.en',
-      multilingual_balanced: 'base',
-      multilingual_accurate: 'small',
+      balanced: DEFAULT_MODEL,
+      most_accurate: 'large-v3',
+      fast_and_accurate: 'large-v3-turbo',
     },
     download_instructions: {
-      base_en:
-        'curl -L -O https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
-      models_directory: `Place models in: ${getModelsDir()}`,
+      model_manager:
+        'Run npm run models -- available to see every model with its size, including ' +
+        'advanced models, then npm run models -- install <model>',
+      models_directory: `Models are stored in: ${getModelsDir()}`,
     },
   });
 }
 
 export const listModelsTool = {
   name: 'list_models',
-  description: 'List available whisper models with performance recommendations',
+  description:
+    'List installed whisper models, and the regular models that are not installed, with ' +
+    'sizes and performance recommendations',
   argsSchema: z.object({}),
   handler,
 };

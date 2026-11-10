@@ -40,12 +40,24 @@ git clone https://github.com/TheAdmiral/inside-voice-mcp.git
 cd inside-voice-mcp
 npm install
 
-# Download the base.en model to ~/.inside-voice-mcp/models
-npm run setup:models
-
-# Or name the models you want
-npm run setup:models -- tiny.en small.en
+# Install the base.en model to ~/.inside-voice-mcp/models
+npm run models -- install base.en
 ```
+
+### Managing Models
+
+The model manager lists, installs and deletes whisper models, and shows the size of each one.
+
+```bash
+npm run models                          # Show the installed models
+npm run models -- available             # Show every model you can install
+npm run models -- install               # Choose models to install from a list
+npm run models -- install tiny.en small # Or name them
+npm run models -- delete                # Choose models to delete from a list
+npm run models -- delete small          # Or name them
+```
+
+**Regular models** are the standard whisper models, listed in the [model comparison](#model-comparison). **Advanced models** are quantised versions of them, such as `base.en-q5_1`. They are smaller and faster, but slightly less accurate. Both kinds come from the [whisper.cpp repository on Hugging Face](https://huggingface.co/ggerganov/whisper.cpp), and both work with the `transcribe` tool once installed.
 
 ### Speaker Diarization Setup (Optional)
 
@@ -98,7 +110,7 @@ Add to your MCP client configuration:
 | Tool | Description |
 |------|-------------|
 | `transcribe` | Audio transcription of any length, with automatic format conversion and optional speaker diarization |
-| `list_models` | Show available whisper models |
+| `list_models` | Show installed whisper models with their sizes, and the regular models not yet installed |
 | `health_check` | System diagnostics |
 | `version` | Server version information |
 
@@ -106,7 +118,7 @@ Add to your MCP client configuration:
 
 - `audio_path` (string): Path to audio file
 - `options` (object, optional):
-  - `model` (string): Model to use (default: 'base.en')
+  - `model` (string): Model to use, regular or advanced, which must be installed (default: 'base.en')
   - `language` (string): Language code (default: 'auto')
   - `output_format` (string): Output format - txt, vtt, srt, json, csv (default: 'txt')
   - `temperature` (number): Sampling temperature 0-1 (default: 0)
@@ -136,23 +148,31 @@ With `diarize`, each format includes the speaker. The speakers found are listed 
 
 ### Model Comparison
 
-| Model | Size | Speed | Accuracy | Best For |
-|-------|------|-------|----------|----------|
-| tiny.en | 39MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Quick transcription |
-| base.en | 142MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Balanced performance |
-| small.en | 488MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | High accuracy |
+The regular models. Models ending in `.en` only understand English, and the others understand 99 languages.
+
+| Model | Size | Speed | Accuracy | Notes |
+|-------|------|-------|----------|-------|
+| tiny.en, tiny | 78 MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Fastest processing |
+| base.en, base | 148 MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Balanced, the default |
+| small.en, small | 488 MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | Higher accuracy |
+| medium.en, medium | 1.5 GB | ⭐⭐ | ⭐⭐⭐⭐ | High accuracy, slower and larger |
+| large-v1 | 3.1 GB | ⭐ | ⭐⭐⭐⭐ | Replaced by large-v2 and large-v3 |
+| large-v2 | 3.1 GB | ⭐ | ⭐⭐⭐⭐⭐ | Very accurate but slow |
+| large-v3 | 3.1 GB | ⭐ | ⭐⭐⭐⭐⭐ | The most accurate and the slowest |
+| large-v3-turbo | 1.6 GB | ⭐⭐ | ⭐⭐⭐⭐⭐ | Much faster than large-v3, weaker at translation |
 
 ## 🏗️ Project Structure
 
 ```
 ├── src/                    # JavaScript source code, run directly
 │   ├── index.js           # Server entry point
+│   ├── models.js          # The model list, and installing and deleting models
 │   ├── schemas.js         # Zod schemas for tool options
 │   ├── tools/             # MCP tool implementations
 │   ├── whisper.js         # whisper.cpp integration
 │   └── utils/             # Speaker diarization & utilities
 ├── python/                # Diarization script and Python dependencies
-├── scripts/               # Model download and manual smoke test
+├── scripts/               # Model manager, setup and manual smoke test
 └── test/                  # Tests (node --test)
     └── fixtures/          # Sample audio
 ```
@@ -188,7 +208,7 @@ brew install whisper-cpp
 which whisper-cli
 ```
 
-**No models found:** run `npm run setup:models`. The `health_check` tool shows which directory the server is looking in.
+**No models found:** run `npm run models -- install base.en`. The `health_check` tool shows which directory the server is looking in.
 
 **Performance issues:**
 - Use 4 threads on Apple Silicon for optimal performance

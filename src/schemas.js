@@ -1,25 +1,26 @@
 import { z } from 'zod';
+import { DEFAULT_MODEL, MODEL_NAME_PATTERN, REGULAR_MODEL_NAMES } from './models.js';
 
-export const WhisperModel = z.enum([
-  'tiny.en',
-  'tiny',
-  'base.en',
-  'base',
-  'small.en',
-  'small',
-  'medium.en',
-  'medium',
-  'large-v1',
-  'large-v2',
-  'large-v3',
-  'large-v3-turbo',
-]);
+const RegularModel = z.enum(REGULAR_MODEL_NAMES);
+
+// Advanced models work too once they are installed, so accept any name that is safe to use
+// as a file name. Transcription then checks that the model is installed.
+const AdvancedModel = z
+  .string()
+  .regex(
+    MODEL_NAME_PATTERN,
+    'Model names can only contain letters, numbers, dots, dashes and underscores',
+  );
+
+export const WhisperModel = z.union([RegularModel, AdvancedModel]);
 
 export const OutputFormat = z.enum(['txt', 'vtt', 'srt', 'json', 'csv']);
 
 export const TranscribeOptionsSchema = z
   .object({
-    model: WhisperModel.default('base.en'),
+    model: WhisperModel.default(DEFAULT_MODEL).describe(
+      'Model to use. Advanced models also work once installed. list_models shows what is installed',
+    ),
     language: z.string().default('auto'),
     output_format: OutputFormat.default('txt'),
     temperature: z.number().min(0).max(1).default(0),

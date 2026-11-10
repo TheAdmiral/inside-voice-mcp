@@ -8,17 +8,11 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { TranscribeOptionsSchema } from '../src/schemas.js';
-import {
-  buildWhisperArgs,
-  getAvailableModels,
-  getModelsDir,
-  parseWhisperJson,
-  transcribe,
-} from '../src/whisper.js';
+import { buildWhisperArgs, parseWhisperJson, transcribe } from '../src/whisper.js';
 
 const options = (overrides = {}) => TranscribeOptionsSchema.parse(overrides);
 
@@ -114,37 +108,6 @@ test('empty whisper JSON gives empty text and English', () => {
   assert.deepEqual(parseWhisperJson({}), { text: '', segments: [], language: 'en' });
 });
 
-test('models live in the home directory by default', (t) => {
-  t.after(() => {
-    delete process.env.WHISPER_MODELS_PATH;
-  });
-  delete process.env.WHISPER_MODELS_PATH;
-
-  assert.equal(getModelsDir(), join(homedir(), '.inside-voice-mcp', 'models'));
-});
-
-test('WHISPER_MODELS_PATH overrides the models directory', (t) => {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-models-'));
-  t.after(() => {
-    delete process.env.WHISPER_MODELS_PATH;
-    rmSync(dir, { recursive: true, force: true });
-  });
-  process.env.WHISPER_MODELS_PATH = dir;
-  writeFileSync(join(dir, 'ggml-tiny.en.bin'), '');
-
-  assert.equal(getModelsDir(), dir);
-  assert.deepEqual(getAvailableModels(), ['tiny.en']);
-});
-
-test('a missing models directory gives no models', (t) => {
-  t.after(() => {
-    delete process.env.WHISPER_MODELS_PATH;
-  });
-  process.env.WHISPER_MODELS_PATH = join(tmpdir(), 'inside-voice-no-such-directory');
-
-  assert.deepEqual(getAvailableModels(), []);
-});
-
 /** What the fake whisper-cli's cue files should come back as, without the leading spaces. */
 const EXPECTED_CUE_FILES = {
   srt: '1\n00:00:00,000 --> 00:00:01,000\nhello',
@@ -205,6 +168,24 @@ for (const output_format of ['txt', 'json']) {
     assert.equal(existsSync(`${readFileSync(recordPath, 'utf-8')}.txt`), false);
   });
 }
+
+test('an installed advanced model can be used', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+  writeFileSync(join(process.env.WHISPER_MODELS_PATH, 'ggml-tiny.en-q5_1.bin'), '');
+
+  const result = await transcribe(audioPath, options({ model: 'tiny.en-q5_1' }));
+
+  assert.equal(result.model_used, 'tiny.en-q5_1');
+});
+
+test('a model that is not installed says how to install it', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+
+  await assert.rejects(
+    transcribe(audioPath, options({ model: 'small.en' })),
+    /not installed.*npm run models -- install small\.en/,
+  );
+});
 
 test('a failed transcription leaves no files behind', async (t) => {
   const { audioDir, audioPath, recordPath } = setUpFakeWhisper(t, { exitCode: 1 });

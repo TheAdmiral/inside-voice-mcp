@@ -12,4 +12,4 @@
 - [ ] Further macOS optimisation
 - [ ] British English READMEs
 - [ ] More model options and descriptions
-- [ ] Model manager
+- [x] Model manager

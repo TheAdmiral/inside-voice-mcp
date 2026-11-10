@@ -14,7 +14,7 @@ class InsideVoice < Formula
 
   COMMANDS = {
     "inside-voice-mcp"               => "src/index.js",
-    "inside-voice-setup-models"      => "scripts/setup-models.js",
+    "inside-voice-models"            => "scripts/model-manager.js",
     "inside-voice-setup-diarization" => "scripts/setup-diarization.js",
     "inside-voice-setup-token"       => "scripts/setup-huggingface-auth.js",
   }.freeze
@@ -35,8 +35,8 @@ class InsideVoice < Formula
 
   def caveats
     <<~EOS
-      Download a whisper model:
-        inside-voice-setup-models
+      Install a whisper model, or run inside-voice-models help to manage them:
+        inside-voice-models install base.en
 
       For speaker diarization, accept the licences for pyannote/speaker-diarization-3.1
       and pyannote/segmentation-3.0 on huggingface.co, then run:

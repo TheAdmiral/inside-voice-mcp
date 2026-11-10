@@ -1,13 +1,14 @@
 import { arch, cpus, platform } from 'node:os';
 import { z } from 'zod';
-import { checkInstallation, getAvailableModels, getModelsDir } from '../whisper.js';
+import { checkInstallation } from '../whisper.js';
+import { DEFAULT_MODEL, getInstalledModels, getModelsDir } from '../models.js';
 import { findHuggingFaceToken } from '../utils/huggingface-auth.js';
 import { jsonResult } from './tool-result.js';
 
 async function handler() {
   try {
     const installation = await checkInstallation();
-    const availableModels = getAvailableModels();
+    const availableModels = getInstalledModels().map((model) => model.name);
     // Only the source and any problem are used, so the token never reaches the tool output.
     const { source: tokenSource, problem: tokenProblem } = await findHuggingFaceToken();
 
@@ -52,7 +53,7 @@ function determineRecommendedModel(availableModels) {
     }
   }
 
-  return availableModels[0] ?? 'base.en';
+  return availableModels[0] ?? DEFAULT_MODEL;
 }
 
 function generateDiagnostics(result, installationError, tokenProblem) {
@@ -79,9 +80,7 @@ function generateDiagnostics(result, installationError, tokenProblem) {
       diagnostics.overall_status = 'warning';
     }
     diagnostics.issues.push('No whisper models found');
-    diagnostics.recommendations.push(
-      `Download models: npm run setup:models or manually download to ${result.models_directory}`,
-    );
+    diagnostics.recommendations.push(`Install a model: npm run models -- install ${DEFAULT_MODEL}`);
   }
 
   // Check the HuggingFace token, which only speaker diarization needs

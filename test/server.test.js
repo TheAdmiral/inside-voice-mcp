@@ -43,7 +43,7 @@ test('rejects invalid arguments with InvalidParams', async () => {
   await assert.rejects(
     client.callTool({
       name: 'transcribe',
-      arguments: { audio_path: 'x.wav', options: { model: 'not-a-model' } },
+      arguments: { audio_path: 'x.wav', options: { model: '../not-a-model' } },
     }),
     { code: ErrorCode.InvalidParams },
   );
@@ -58,8 +58,11 @@ test('publishes the transcribe schema generated from zod', async () => {
   const schema = tools.find((tool) => tool.name === 'transcribe').inputSchema;
 
   assert.deepEqual(schema.required, ['audio_path']);
-  assert.ok(schema.properties.options.properties.model.enum.includes('tiny.en'));
-  assert.ok(schema.properties.options.properties.model.enum.includes('large-v3-turbo'));
+  // The regular models are published so clients can offer them, alongside any advanced name.
+  const [regularModels, advancedModels] = schema.properties.options.properties.model.anyOf;
+  assert.ok(regularModels.enum.includes('tiny.en'));
+  assert.ok(regularModels.enum.includes('large-v3-turbo'));
+  assert.equal(advancedModels.type, 'string');
   assert.ok('max_len' in schema.properties.options.properties);
   assert.ok('split_on_word' in schema.properties.options.properties);
 });
