@@ -1,7 +1,7 @@
 # TODO
 
-- [ ] Run a real diarization test (accept the pyannote licences and run `npm run setup:token`)
-- [ ] Reduce the number of prerequisites to install
+- [x] Run a real diarization test (accept the pyannote licences and run `npm run setup:token`)
+- [x] Reduce the number of prerequisites to install
 - [ ] Finish the draft Homebrew formula in `packaging/homebrew` with the release URL and checksum
 - [ ] Create the `TheAdmiral/homebrew-tap` repository for the formula
 - [ ] Tag a release for the formula to download
