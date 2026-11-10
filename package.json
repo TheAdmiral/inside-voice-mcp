@@ -8,11 +8,13 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test test/*.test.js",
+    "test:python": "uv run --no-project --python 3.13 --with numpy python test/test_diarize.py",
     "lint": "oxlint src test scripts",
     "lint:fix": "oxlint src test scripts --fix",
     "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
     "setup:models": "node scripts/setup-models.js",
+    "setup:diarization": "node scripts/setup-diarization.js",
     "setup:token": "node scripts/setup-huggingface-auth.js"
   },
   "engines": {

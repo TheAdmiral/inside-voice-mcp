@@ -29,8 +29,7 @@ const HELP_TEXT = {
     '',
     '',
     'Setup Help:',
-    '- Follow the Speaker Diarization Setup section of the README, using Python 3.13',
-    '- Set PYTHON_EXECUTABLE if that Python is in a virtual environment',
+    '- Follow the Speaker Diarization Setup section of the README',
     '- Store your HuggingFace token for Pyannote models: npm run setup:token',
   ].join('\n'),
   PROCESSING_ERROR: [
@@ -45,10 +44,7 @@ async function findPythonOrThrow() {
   const python = await findDiarizationPython();
 
   if (!python) {
-    throw new DiarizationError(
-      'SETUP_ERROR',
-      'Speaker diarization requires Python with PyTorch and pyannote.audio.',
-    );
+    throw new DiarizationError('SETUP_ERROR', 'Speaker diarization requires uv (brew install uv).');
   }
 
   return python;

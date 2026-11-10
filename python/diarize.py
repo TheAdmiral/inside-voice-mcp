@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.13,<3.14"
+# dependencies = [
+#     "pyannote.audio==3.4.0",
+#     "torch>=2.6,<2.9",
+#     "torchaudio>=2.6,<2.9",
+#     "huggingface_hub<1.0",
+# ]
+# ///
 """
 Speaker diarization for Inside Voice.
 

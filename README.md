@@ -24,7 +24,7 @@ Inside Voice is a high-performance Model Context Protocol (MCP) server providing
 - Node.js 24.2+
 - whisper.cpp (`brew install whisper-cpp`)
 - **For audio format conversion**: ffmpeg (`brew install ffmpeg`) - automatically handles MP3, M4A, FLAC, OGG, etc.
-- **For speaker diarization**: Python 3.13 and HuggingFace token (free)
+- **For speaker diarization**: uv (`brew install uv`) and a HuggingFace token (free). uv fetches Python and the packages itself
 
 ### Supported Audio Formats
 
@@ -51,19 +51,13 @@ npm run setup:models -- tiny.en small.en
 
 Basic transcription works without any of this. Only speaker diarization needs it.
 
-1. Install the Python dependencies in a virtual environment. Use Python 3.13, because the PyTorch version that pyannote needs is not available for the newest Python releases:
+1. Install uv, then download Python and the packages (about 1.5 GB):
    ```bash
-   brew install python@3.13
-   python3.13 -m venv ~/.inside-voice-mcp/venv
-   ~/.inside-voice-mcp/venv/bin/pip install -r python/requirements.txt
+   brew install uv
+   npm run setup:diarization
    ```
 
-2. Tell the server to use that Python by adding `PYTHON_EXECUTABLE` to your MCP client configuration, using the full path to your home directory:
-   ```json
-   "env": { "PYTHON_EXECUTABLE": "/Users/you/.inside-voice-mcp/venv/bin/python" }
-   ```
-
-3. Get a free HuggingFace token:
+2. Get a free HuggingFace token:
    - Create an account at [huggingface.co](https://huggingface.co)
    - Generate a token at [Settings > Access Tokens](https://huggingface.co/settings/tokens)
    - Accept the licenses for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) and [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
@@ -96,7 +90,7 @@ Add to your MCP client configuration:
 ### Environment Variables
 
 - `WHISPER_MODELS_PATH`: Absolute path to your whisper models (default: `~/.inside-voice-mcp/models`)
-- `PYTHON_EXECUTABLE`: Python to use for speaker diarization (default: the first one found that has pyannote.audio)
+- `PYTHON_EXECUTABLE`: Your own Python with pyannote.audio, to use for speaker diarization instead of uv (default: uv)
 - `HF_TOKEN`: HuggingFace token for speaker diarization (default: the token stored by `npm run setup:token`)
 
 ## 🛠️ Available Tools
@@ -173,6 +167,7 @@ npm run dev
 
 # Tests
 npm test
+npm run test:python    # Speaker linking, needs uv
 
 # Linting & formatting
 npm run lint

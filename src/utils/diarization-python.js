@@ -2,8 +2,10 @@ import { join } from 'node:path';
 import { findHuggingFaceToken } from './huggingface-auth.js';
 import { runCommand } from './run-command.js';
 
-const DIARIZE_SCRIPT = join(import.meta.dirname, '../../python/diarize.py');
+export const DIARIZE_SCRIPT = join(import.meta.dirname, '../../python/diarize.py');
 const PACKAGE_CHECK_TIMEOUT_MS = 30_000;
+// --frozen installs exactly what python/diarize.py.lock lists, without rewriting that file.
+const UV_RUN_SCRIPT_ARGS = ['run', '--quiet', '--frozen', '--script'];
 
 export class DiarizationError extends Error {
   /** `code` is 'SETUP_ERROR' or 'PROCESSING_ERROR'. */
@@ -33,31 +35,37 @@ function buildPythonEnvironment(huggingFaceToken) {
   return environment;
 }
 
-/** Returns the first Python executable that can import torch and pyannote.audio, or null. */
+async function commandSucceeds(command, args) {
+  try {
+    const result = await runCommand(command, args, {
+      env: buildPythonEnvironment(),
+      timeout: PACKAGE_CHECK_TIMEOUT_MS,
+    });
+    return result.exitCode === 0;
+  } catch {
+    // The command is not installed.
+    return false;
+  }
+}
+
+/**
+ * Finds what should run python/diarize.py: the Python named by PYTHON_EXECUTABLE if it has
+ * the packages, otherwise uv, which fetches Python and the packages itself.
+ * @returns {Promise<{ command: string, argsBeforeScript: string[] } | null>}
+ */
 export async function findDiarizationPython() {
-  const candidates = [
-    process.env.PYTHON_EXECUTABLE,
-    '/opt/miniconda3/bin/python3',
-    'python3',
-    'python',
-    '/opt/homebrew/bin/python3',
-    '/usr/bin/python3',
-  ].filter(Boolean);
+  const configuredPython = process.env.PYTHON_EXECUTABLE;
+  if (
+    configuredPython &&
+    (await commandSucceeds(configuredPython, ['-c', 'import torch, pyannote.audio']))
+  ) {
+    console.error(`[Diarization] Using Python: ${configuredPython}`);
+    return { command: configuredPython, argsBeforeScript: [] };
+  }
 
-  for (const python of candidates) {
-    try {
-      const result = await runCommand(python, ['-c', 'import torch, pyannote.audio'], {
-        env: buildPythonEnvironment(),
-        timeout: PACKAGE_CHECK_TIMEOUT_MS,
-      });
-
-      if (result.exitCode === 0) {
-        console.error(`[Diarization] Using Python: ${python}`);
-        return python;
-      }
-    } catch {
-      // This candidate is not installed, so try the next one.
-    }
+  if (await commandSucceeds('uv', ['--version'])) {
+    console.error('[Diarization] Using uv');
+    return { command: 'uv', argsBeforeScript: UV_RUN_SCRIPT_ARGS };
   }
 
   return null;
@@ -74,6 +82,7 @@ export async function findDiarizationPython() {
 export async function runDiarization(python, params) {
   const { audioPath, minSpeakers, maxSpeakers, useMps } = params;
   const args = [
+    ...python.argsBeforeScript,
     DIARIZE_SCRIPT,
     audioPath,
     String(minSpeakers),
@@ -90,7 +99,7 @@ export async function runDiarization(python, params) {
 
   let result;
   try {
-    result = await runCommand(python, args, { env: buildPythonEnvironment(token) });
+    result = await runCommand(python.command, args, { env: buildPythonEnvironment(token) });
   } catch (error) {
     throw new DiarizationError('PROCESSING_ERROR', `Script execution failed: ${error.message}`);
   }
