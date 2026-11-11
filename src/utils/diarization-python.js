@@ -23,6 +23,8 @@ function buildPythonEnvironment(huggingFaceToken) {
     PYTHONIOENCODING: 'utf-8',
     PYTHONDONTWRITEBYTECODE: '1',
     PYTHONWARNINGS: 'ignore',
+    // Runs any step the Mac GPU (MPS) does not support on the CPU, instead of failing.
+    PYTORCH_ENABLE_MPS_FALLBACK: '1',
     // Prevents Unicode problems when the server is started from a desktop app.
     LC_ALL: 'en_US.UTF-8',
     LANG: 'en_US.UTF-8',

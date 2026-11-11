@@ -35,11 +35,8 @@ def setup_device(use_mps):
         if use_mps and torch.backends.mps.is_available():
             print("Using MPS (Apple Silicon) acceleration", file=sys.stderr)
             return torch.device("mps")
-        elif torch.cuda.is_available():
-            print("Using CUDA acceleration", file=sys.stderr)
-            return torch.device("cuda")
         else:
-            print("Using CPU (no acceleration available)", file=sys.stderr)
+            print("Using CPU", file=sys.stderr)
             return torch.device("cpu")
     except ImportError:
         print("PyTorch not available, falling back to CPU", file=sys.stderr)
