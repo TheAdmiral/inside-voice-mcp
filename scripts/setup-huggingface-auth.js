@@ -1,7 +1,16 @@
-import { platform } from 'node:os';
+/**
+ * Stores a HuggingFace token for speaker diarisation, in the macOS Keychain by default.
+ * Run with --file to store it in a private file instead.
+ */
+
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import { getConfigPath, saveHuggingFaceToken } from '../src/utils/huggingface-auth.js';
+import { parseArgs } from 'node:util';
+import {
+  findHuggingFaceToken,
+  getConfigPath,
+  saveHuggingFaceToken,
+} from '../src/utils/huggingface-auth.js';
 
 /** Resolves with the line typed, or an empty string if the prompt is cancelled. */
 function askForHiddenInput(question) {
@@ -28,19 +37,29 @@ function askForHiddenInput(question) {
   });
 }
 
-function reportSavedLocation(location) {
+async function reportSavedLocation(location, useKeychain) {
   if (location === 'keychain') {
     console.log('Saved your HuggingFace token to the macOS Keychain.');
     return;
   }
 
-  if (platform() === 'darwin') {
+  if (useKeychain) {
     console.log('The macOS Keychain was not available.');
   }
   console.log(`Saved your HuggingFace token to ${getConfigPath()}, readable only by you.`);
+
+  // The server reads the Keychain before the file, so an older Keychain token would still win.
+  const { source } = await findHuggingFaceToken();
+  if (source === 'keychain') {
+    console.log('A token in the Keychain is still used instead. Remove it with:');
+    console.log('  security delete-generic-password -s inside-voice-mcp -a HF_TOKEN');
+  }
 }
 
 try {
+  const { values } = parseArgs({ options: { file: { type: 'boolean', default: false } } });
+  const useKeychain = !values.file;
+
   const token = (await askForHiddenInput('HuggingFace token (input is hidden): ')).trim();
   process.stdout.write('\n');
 
@@ -48,7 +67,8 @@ try {
     throw new Error('No token entered, so nothing was saved.');
   }
 
-  reportSavedLocation(await saveHuggingFaceToken(token));
+  const location = await saveHuggingFaceToken(token, { useKeychain });
+  await reportSavedLocation(location, useKeychain);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

@@ -7,6 +7,8 @@ class InsideVoice < Formula
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
 
+  depends_on arch: :arm64
+  depends_on :macos
   depends_on "ffmpeg"
   depends_on "node@24"
   depends_on "uv"

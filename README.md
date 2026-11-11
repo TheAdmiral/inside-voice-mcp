@@ -21,6 +21,7 @@ Inside Voice is a high-performance Model Context Protocol (MCP) server providing
 
 ### Prerequisites
 
+- A Mac with Apple Silicon
 - Node.js 24.2+
 - whisper.cpp (`brew install whisper-cpp`)
 - **For audio format conversion**: ffmpeg (`brew install ffmpeg`) – automatically handles MP3, M4A, FLAC, OGG, etc.
@@ -78,7 +79,13 @@ Basic transcription works without any of this. Only speaker diarisation needs it
      npm run setup:token
      ```
 
-The token is saved in the macOS Keychain. If the Keychain is unavailable, for example on Linux, it is saved in `~/.inside-voice-mcp/config.json` instead, readable only by you. The server refuses to use that file if other users can read it.
+The token is saved in the macOS Keychain. If you would rather not use the Keychain, save it to a private file instead:
+
+```bash
+npm run setup:token -- --file
+```
+
+This saves it in `~/.inside-voice-mcp/config.json`, readable only by you. It is also used if the Keychain is unavailable. The server refuses to use that file if other users can read it.
 
 The server looks for the token in the `HF_TOKEN` environment variable first, then the Keychain, then the file. Run the `health_check` tool to see which one it found.
 
@@ -127,7 +134,7 @@ Claude Desktop starts MCP servers with a minimal `PATH`, not the one from your s
 }
 ```
 
-Run `which node whisper-cli uv` in your terminal to see where they are installed on your Mac. On Intel Macs, Homebrew uses `/usr/local/bin` instead of `/opt/homebrew/bin`. Run the `health_check` tool from Claude Desktop to confirm the server can find everything.
+Run `which node whisper-cli uv` in your terminal to see where they are installed on your Mac. Run the `health_check` tool from Claude Desktop to confirm the server can find everything.
 
 #### HTTP clients, such as Jan
 

@@ -95,14 +95,8 @@ function generateDiagnostics(result, installationError, tokenProblem) {
     );
   }
 
-  // Check Apple Silicon optimization
-  if (result.system_info.arch === 'arm64' && result.system_info.platform === 'darwin') {
-    diagnostics.apple_silicon_optimization = 'available';
-    diagnostics.recommended_threads = Math.min(4, result.system_info.threads_available);
-    diagnostics.recommendations.push(
-      `Optimal thread count for Apple Silicon: ${diagnostics.recommended_threads}`,
-    );
-  }
+  diagnostics.recommended_threads = Math.min(4, result.system_info.threads_available);
+  diagnostics.recommendations.push(`Recommended thread count: ${diagnostics.recommended_threads}`);
 
   // Set overall status if no issues found
   if (diagnostics.overall_status === 'unknown') {

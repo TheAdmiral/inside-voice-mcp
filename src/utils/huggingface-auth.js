@@ -137,15 +137,16 @@ async function saveTokenToConfigFile(token) {
 
 /**
  * Stores the token in the macOS Keychain, or in the config file if the Keychain is unavailable.
+ * Pass `useKeychain: false` to store it in the config file without trying the Keychain.
  * @returns {Promise<'keychain' | 'config_file'>} where the token was stored
  */
-export async function saveHuggingFaceToken(token) {
+export async function saveHuggingFaceToken(token, { useKeychain = true } = {}) {
   // This also keeps the token safe to place inside the quoted Keychain command.
   if (!/^[A-Za-z0-9_-]+$/.test(token)) {
     throw new Error('That does not look like a HuggingFace token.');
   }
 
-  if (await saveTokenToKeychain(token)) {
+  if (useKeychain && (await saveTokenToKeychain(token))) {
     return 'keychain';
   }
 

@@ -172,6 +172,17 @@ test('falls back to a private file when the Keychain does not save', async (t) =
   assert.deepEqual(JSON.parse(readFileSync(getConfigPath(), 'utf-8')), { hf_token: 'hf_abc123' });
 });
 
+test('saves to a private file without trying the Keychain when asked', async (t) => {
+  const { keychainPath } = setUpIsolatedHome(t);
+
+  const location = await saveHuggingFaceToken('hf_abc123', { useKeychain: false });
+
+  assert.equal(location, 'config_file');
+  assert.equal(existsSync(keychainPath), false);
+  assert.equal(statSync(getConfigPath()).mode & 0o777, 0o600);
+  assert.equal((await findHuggingFaceToken()).token, 'hf_abc123');
+});
+
 test('saving replaces an existing file that was too open', async (t) => {
   setUpIsolatedHome(t, { brokenKeychain: true });
   writeConfigFile('{"hf_token":"old"}', 0o644);
