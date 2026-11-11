@@ -49,3 +49,10 @@ test('every regular model that is not installed is listed as not downloaded', as
   );
   assert.match(result.not_downloaded[0].download_note, /npm run models -- install tiny$/);
 });
+
+test('recommends large-v3-turbo-q8_0 for accuracy', async (t) => {
+  const result = await listModels(t, { 'ggml-large-v3-turbo-q8_0.bin': '' });
+
+  assert.equal(result.recommended_for_accuracy, 'large-v3-turbo-q8_0');
+  assert.match(result.available_models[0].description, /recommended for accuracy/);
+});

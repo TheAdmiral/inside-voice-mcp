@@ -25,7 +25,8 @@ Commands:
   help                 Show this help
 
 Regular models are the standard whisper models. Advanced models are quantised versions of
-them, which are smaller and faster but slightly less accurate.
+them, which are smaller and use less memory but are slightly less accurate. large-v3-turbo-q8_0
+is recommended for accuracy.
 
 The VAD model, called ${VAD_MODEL_NAME}, lets whisper skip the parts without speech, which is
 faster and avoids made-up text in silences. It is installed along with any whisper model,

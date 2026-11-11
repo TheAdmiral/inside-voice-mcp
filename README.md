@@ -58,7 +58,7 @@ npm run models -- delete                # Choose models to delete from a list
 npm run models -- delete small          # Or name them
 ```
 
-**Regular models** are the standard whisper models, listed in the [model comparison](#model-comparison). **Advanced models** are quantised versions of them, such as `base.en-q5_1`. They are smaller and faster, but slightly less accurate. Both kinds come from the [whisper.cpp repository on Hugging Face](https://huggingface.co/ggerganov/whisper.cpp), and both work with the `transcribe` tool once installed.
+**Regular models** are the standard whisper models, listed in the [model comparison](#model-comparison). **Advanced models** are quantised versions of them, such as `base.en-q5_1`. They are smaller and use less memory, but are slightly less accurate. One of them is [recommended for accuracy](#recommended-for-accuracy-large-v3-turbo-q8_0). Both kinds come from the [whisper.cpp repository on Hugging Face](https://huggingface.co/ggerganov/whisper.cpp), and both work with the `transcribe` tool once installed.
 
 #### Skipping silence (recommended)
 
@@ -227,6 +227,18 @@ The regular models. Models ending in `.en` only understand English, and the othe
 | large-v2 | 3.1 GB | ⭐ | ⭐⭐⭐⭐⭐ | Very accurate but slow |
 | large-v3 | 3.1 GB | ⭐ | ⭐⭐⭐⭐⭐ | The most accurate and the slowest |
 | large-v3-turbo | 1.6 GB | ⭐⭐ | ⭐⭐⭐⭐⭐ | Much faster than large-v3, weaker at translation |
+
+#### Recommended for accuracy: large-v3-turbo-q8_0
+
+For the most accurate transcripts, use the advanced model `large-v3-turbo-q8_0`:
+
+```bash
+npm run models -- install large-v3-turbo-q8_0
+```
+
+On a 10-minute recording on an M3 Mac, it took 68 seconds, against 139 seconds for `large-v3`, and used 1.4 GB of memory, against 4.4 GB. Its accuracy was close to `large-v3-turbo`. `base.en` remains the default, because it is about three times faster again, but it makes more mistakes.
+
+Quantised models use less memory, but on Apple Silicon they are not faster than the model they came from.
 
 ## 🏗️ Project Structure
 

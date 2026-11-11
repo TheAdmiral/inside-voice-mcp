@@ -12,6 +12,11 @@ const FILE_LIST_URL = `https://huggingface.co/api/models/${REPOSITORY}/tree/main
 
 export const DEFAULT_MODEL = 'base.en';
 
+// On a 10-minute recording on an M3, this was twice as fast as large-v3 and used a third of
+// the memory, with accuracy close to large-v3-turbo. Quantising made no model faster on the
+// Mac GPU, but q8_0 kept the most accuracy for the memory it saved.
+export const RECOMMENDED_ACCURATE_MODEL = 'large-v3-turbo-q8_0';
+
 // The Silero voice activity detection (VAD) model lets whisper skip the parts without speech.
 // It is not a whisper model, so it lives in its own directory and is not listed with them.
 const VAD_MODEL_URL =
@@ -143,10 +148,14 @@ export function describeModel(name) {
     return regularModel.description;
   }
 
+  if (name === RECOMMENDED_ACCURATE_MODEL) {
+    return 'large-v3-turbo quantised to q8_0: recommended for accuracy, faster and smaller than large-v3';
+  }
+
   const quantised = name.match(QUANTISED_NAME_PATTERN);
   if (quantised) {
     const [, baseModel, quantisation] = quantised;
-    return `${baseModel} quantised to ${quantisation}: smaller and faster, slightly less accurate`;
+    return `${baseModel} quantised to ${quantisation}: smaller, uses less memory, slightly less accurate`;
   }
 
   return 'Advanced model';

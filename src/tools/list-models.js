@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   DEFAULT_MODEL,
+  RECOMMENDED_ACCURATE_MODEL,
   REGULAR_MODELS,
   describeModel,
   findRegularModel,
@@ -55,11 +56,12 @@ async function handler() {
     available_models: installedModels.map(describeInstalledModel),
     not_downloaded: missingRegularModels.map(describeMissingModel),
     recommended_for_apple_silicon: DEFAULT_MODEL,
+    recommended_for_accuracy: RECOMMENDED_ACCURATE_MODEL,
     performance_notes: {
       fastest: 'tiny.en',
       balanced: DEFAULT_MODEL,
       most_accurate: 'large-v3',
-      fast_and_accurate: 'large-v3-turbo',
+      fast_and_accurate: RECOMMENDED_ACCURATE_MODEL,
     },
     download_instructions: {
       model_manager:
