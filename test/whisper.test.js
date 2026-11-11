@@ -326,31 +326,34 @@ test('vad true without the VAD model says how to install it', async (t) => {
 
 test('builds a sentence from the vocabulary', () => {
   assert.equal(buildVocabularyPrompt([]), null);
-  assert.equal(buildVocabularyPrompt(['Tellet']), 'Words used in this recording include Tellet.');
   assert.equal(
-    buildVocabularyPrompt(['Tellet', 'Kubernetes', 'Tellet', 'Anthropic']),
-    'Words used in this recording include Tellet, Kubernetes and Anthropic.',
+    buildVocabularyPrompt(['Kubernetes']),
+    'Words used in this recording include Kubernetes.',
+  );
+  assert.equal(
+    buildVocabularyPrompt(['Kubernetes', 'PostgreSQL', 'Kubernetes', 'Grafana']),
+    'Words used in this recording include Kubernetes, PostgreSQL and Grafana.',
   );
 });
 
 test('passes the vocabulary to whisper as a prompt for every window', () => {
-  const args = buildWhisperArgs('a.wav', 'm.bin', 'out', options({ vocabulary: ['Tellet'] }));
+  const args = buildWhisperArgs('a.wav', 'm.bin', 'out', options({ vocabulary: ['Kubernetes'] }));
   const promptIndex = args.indexOf('--prompt');
 
-  assert.equal(args[promptIndex + 1], 'Words used in this recording include Tellet.');
+  assert.equal(args[promptIndex + 1], 'Words used in this recording include Kubernetes.');
   assert.ok(args.includes('--carry-initial-prompt'));
   assert.ok(!buildWhisperArgs('a.wav', 'm.bin', 'out', options()).includes('--prompt'));
 });
 
 test('vocabulary terms are trimmed, and blank terms are rejected', () => {
-  assert.deepEqual(options({ vocabulary: ['  Tellet '] }).vocabulary, ['Tellet']);
-  assert.throws(() => options({ vocabulary: ['Tellet', '  '] }));
+  assert.deepEqual(options({ vocabulary: ['  Kubernetes '] }).vocabulary, ['Kubernetes']);
+  assert.throws(() => options({ vocabulary: ['Kubernetes', '  '] }));
 });
 
 test('warns when the vocabulary is too long for whisper', () => {
   const longVocabulary = Array.from({ length: 200 }, (_, index) => `Term${index}`);
 
-  assert.deepEqual(checkVocabulary(['Tellet', 'Kubernetes']), []);
+  assert.deepEqual(checkVocabulary(['Kubernetes', 'PostgreSQL']), []);
   assert.match(checkVocabulary(longVocabulary)[0], /vocabulary may be too long/);
 });
 
@@ -358,7 +361,10 @@ test('a transcription reports the vocabulary warnings', async (t) => {
   const { audioPath } = setUpFakeWhisper(t);
   const longVocabulary = Array.from({ length: 200 }, (_, index) => `Term${index}`);
 
-  const short = await transcribe(audioPath, options({ model: 'tiny.en', vocabulary: ['Tellet'] }));
+  const short = await transcribe(
+    audioPath,
+    options({ model: 'tiny.en', vocabulary: ['Kubernetes'] }),
+  );
   const long = await transcribe(
     audioPath,
     options({ model: 'tiny.en', vocabulary: longVocabulary }),

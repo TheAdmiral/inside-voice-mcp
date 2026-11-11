@@ -192,7 +192,7 @@ The server only accepts connections from your own computer, because its tools ca
   - `threads` (number): CPU threads to use (default: 4)
   - `word_timestamps` (boolean): Add a `words` array with each word's start and end time to every segment in `metadata.segments` (default: false). Times are approximate, and languages written without spaces get one word per segment.
   - `vad` (boolean): Skip the parts without speech (default: on when the [VAD model](#skipping-silence-recommended) is installed). Setting it to `true` without the VAD model installed gives an error
-  - `vocabulary` (array of strings): Names and terms to spell correctly, such as `["Tellet", "Kubernetes"]` (default: none). See [Vocabulary](#vocabulary)
+  - `vocabulary` (array of strings): Names and terms to spell correctly, such as `["Kubernetes", "PostgreSQL"]` (default: none). See [Vocabulary](#vocabulary)
   - `diarize` (boolean): Identify who is speaking in each segment, which needs the [diarisation setup](#speaker-diarisation-setup-optional) (default: false)
   - `min_speakers` (number): Fewest speakers to look for (default: 1)
   - `max_speakers` (number): Most speakers to look for (default: 10)
@@ -202,16 +202,16 @@ The server only accepts connections from your own computer, because its tools ca
 
 ### Vocabulary
 
-whisper often misspells names it has not seen, such as writing the company Tellet as "tell it". List them in `vocabulary` to steer it towards your spelling:
+whisper often misspells names and terms it has not seen often, such as `tiny.en` writing Kubernetes as "Cuban eats". List them in `vocabulary` to steer it towards your spelling:
 
 ```json
 {
   "audio_path": "/path/to/call.m4a",
-  "options": { "vocabulary": ["Tellet", "Kubernetes"] }
+  "options": { "vocabulary": ["Kubernetes", "PostgreSQL"] }
 }
 ```
 
-Inside Voice gives whisper a sentence before the recording, "Words used in this recording include Tellet and Kubernetes.", and repeats it for every 30 seconds of audio. This makes your spelling much more likely, but not certain. In testing, `tiny.en`, `small.en` and `large-v3-turbo-q8_0` spelt Tellet correctly every time, while `base.en` sometimes still wrote "Tell it".
+Inside Voice gives whisper a sentence before the recording, "Words used in this recording include Kubernetes and PostgreSQL.", and repeats it for every 30 seconds of audio. This makes your spelling more likely, but not certain, especially with the smaller models.
 
 whisper reads only about 224 tokens of the sentence, roughly 50 to 100 terms, so keep the list to the terms the recording needs. You get a warning in `metadata.warnings` if the list looks too long.
 

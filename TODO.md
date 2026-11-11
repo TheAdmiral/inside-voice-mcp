@@ -11,7 +11,7 @@
   - Add `src/strings.js`, grouped by area: tool and option descriptions, `list_models` and `health_check` text, model descriptions, error messages, and the model manager and setup script output.
   - Use a JS module rather than JSON, so that text with values in it, such as a model name, can be a small function.
   - Move every string out of `src/` and `scripts/` into it, and add a test that catches new strings written outside it. READMEs stay as they are.
-- [x] I want to be able to supply special terms and their spellings to the server in order to hint the transcription. For example, I work for the company ‘Tellet’, which is often transcribed as ‘tell it’.
+- [x] I want to be able to supply special terms and their spellings to the server in order to hint the transcription. For example, ‘Kubernetes’, which is sometimes transcribed as ‘Cuban eats’.
   - whisper-cli takes an initial prompt (`--prompt`, with `--carry-initial-prompt` to keep it for every window), which steers spellings without changing anything else.
   - Add a `vocabulary` option to `transcribe` (a list of terms).
   - The prompt is limited to about 224 tokens, so warn when the list is too long.
