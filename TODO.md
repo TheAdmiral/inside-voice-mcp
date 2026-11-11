@@ -1,20 +1,12 @@
 # TODO
 
-- [x] Run a real diarization test (accept the pyannote licences and run `npm run setup:token`)
-- [x] Reduce the number of prerequisites to install
-- [ ] Finish the draft Homebrew formula in `packaging/homebrew` with the release URL and checksum
-- [ ] Create the `TheAdmiral/homebrew-tap` repository for the formula
-- [ ] Tag a release for the formula to download
+## 2.0.0
+
+- [ ] Homebrew setup
+	- Finish the draft Homebrew formula in `packaging/homebrew` with the release URL and checksum
+	- Create the `TheAdmiral/homebrew-tap` repository for the formula
+	- Tag a release for the formula to download
 - [ ] Friendly setup wizard
-- [x] Run as a server on localhost:port
-- [ ] Transcription web UI
-- [x] Install as a binary
-- [x] Further macOS optimisation
-- [x] British English READMEs
-- [x] More model options and descriptions
-- [x] Model manager
-- [x] Can the license include a copyright for me too?
-  - Add a second `Copyright (c) 2026 <your name>` line under the SmartLittleApps one in `LICENSE`, and set `author` in `package.json`. Check the name to use first.
 - [ ] I want to review and edit all the user-facing copy. Create a strings file that will be used as the source of truth for all the copy in the app.
   - Add `src/strings.js`, grouped by area: tool and option descriptions, `list_models` and `health_check` text, model descriptions, error messages, and the model manager and setup script output.
   - Use a JS module rather than JSON, so that text with values in it, such as a model name, can be a small function.
@@ -23,6 +15,10 @@
   - whisper-cli takes an initial prompt (`--prompt`, with `--carry-initial-prompt` to keep it for every window), which steers spellings without changing anything else.
   - Add a `vocabulary` option to `transcribe` (a list of terms).
   - The prompt is limited to about 224 tokens, so warn when the list is too long.
+
+## Future
+
+- [ ] Transcription web UI
 - [ ] Rewrite everything apart from the Python in Rust, on a new branch
   - Main gain: a single binary with no Node, which avoids Claude Desktop's PATH problems and lets the `.mcpb` extension contain the server itself. Transcription is no faster, because the time is spent in whisper-cli and pyannote.
   - About 2,500 lines of JS and 1,700 of tests to port. Likely crates: `rmcp` (official MCP SDK, stdio and HTTP), `serde` and `schemars` in place of zod, `reqwest` and `tokio`, `clap`, `rpassword`.
