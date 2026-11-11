@@ -67,6 +67,8 @@ async function transcribeWithoutSpeakers(audioPath, options) {
   };
 }
 
+// Transcription and diarization run one after the other on purpose. Running them at the same
+// time was tested and was no faster, because both compete for the GPU and memory.
 async function transcribeWithSpeakers(audioPath, options, python) {
   const startTime = Date.now();
 
