@@ -119,7 +119,7 @@ export async function transcribe(audioPath, options) {
       throw new Error(`Whisper process failed: ${result.stderr}`);
     }
 
-    const output = await readWhisperOutput(outputBase, result.stdout, options);
+    const output = await readWhisperOutput(outputBase, options);
 
     return {
       ...output,
@@ -287,7 +287,10 @@ async function readJsonOutput(outputBase) {
   return parseWhisperJson(JSON.parse(jsonText));
 }
 
-/** whisper starts the text of every cue with a space that is not part of the transcript. */
+/**
+ * whisper starts the text of every cue with a space that is not part of the transcript.
+ * Lines in the txt file have no such space, so they are left as they are.
+ */
 function removeSpaceBeforeCueText(fileText, format) {
   if (format === 'csv') {
     return fileText.replace(/^(\d+,\d+,") +/gm, '$1');
@@ -296,17 +299,13 @@ function removeSpaceBeforeCueText(fileText, format) {
   return fileText.replace(/^ +/gm, '');
 }
 
-async function readFormattedText(outputBase, stdout, format) {
-  // stdout is always timestamped text, so other formats only exist in their output file.
-  if (format === 'txt') {
-    return stdout;
-  }
-
+/** Reads the output file for the format. whisper's stdout is not used, as it has timestamps. */
+async function readFormattedText(outputBase, format) {
   const fileText = await readFile(`${outputBase}.${format}`, 'utf-8');
   return removeSpaceBeforeCueText(fileText, format);
 }
 
-async function readWhisperOutput(outputBase, stdout, options) {
+async function readWhisperOutput(outputBase, options) {
   const { output_format, word_timestamps } = options;
   const jsonOutput = await readJsonOutput(outputBase);
 
@@ -314,7 +313,7 @@ async function readWhisperOutput(outputBase, stdout, options) {
     return jsonOutput;
   }
 
-  const text = await readFormattedText(outputBase, stdout, output_format);
+  const text = await readFormattedText(outputBase, output_format);
   const output = { text: text.trim(), language: jsonOutput.language };
 
   if (word_timestamps) {

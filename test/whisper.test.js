@@ -153,7 +153,7 @@ echo hello > "$out.txt"
 printf '1\\n00:00:00,000 --> 00:00:01,000\\n hello\\n' > "$out.srt"
 printf 'WEBVTT\\n\\n00:00:00.000 --> 00:00:01.000\\n hello\\n' > "$out.vtt"
 printf 'start,end,text\\n0,1000," hello"\\n' > "$out.csv"
-echo hello
+echo '[00:00:00.000 --> 00:00:01.000]   hello'
 exit ${exitCode}
 `,
   );
@@ -198,6 +198,14 @@ test('a model that is not installed says how to install it', async (t) => {
     transcribe(audioPath, options({ model: 'small.en' })),
     /not installed.*inside-voice-mcp models install small\.en/,
   );
+});
+
+test('txt transcription returns the plain text file, without timestamps', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+
+  const result = await transcribe(audioPath, options({ model: 'tiny.en' }));
+
+  assert.equal(result.text, 'hello');
 });
 
 test('a failed transcription leaves no files behind', async (t) => {

@@ -59,7 +59,8 @@ while [ $# -gt 0 ]; do
   shift
 done
 echo '${WHISPER_JSON}' > "$out.json"
-echo 'plain transcript'
+echo 'plain transcript' > "$out.txt"
+echo '[00:00:00.000 --> 00:00:02.000]   plain transcript'
 `,
   );
   chmodSync(whisperPath, 0o755);
