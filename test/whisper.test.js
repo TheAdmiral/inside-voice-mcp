@@ -84,14 +84,13 @@ test('adds optional flags only when they are set', () => {
     'a.wav',
     'm.bin',
     'out',
-    options({ language: 'sv', translate: true, max_len: 40, split_on_word: true }),
+    options({ language: 'sv', max_len: 40, split_on_word: true }),
   );
 
   assert.deepEqual(args.slice(args.indexOf('--language'), args.indexOf('--language') + 2), [
     '--language',
     'sv',
   ]);
-  assert.ok(args.includes('--translate'));
   assert.deepEqual(args.slice(args.indexOf('--max-len'), args.indexOf('--max-len') + 2), [
     '--max-len',
     '40',

@@ -169,10 +169,6 @@ export function buildWhisperArgs(audioPath, modelPath, outputBase, options, vadM
     args.push('--language', options.language);
   }
 
-  if (options.translate) {
-    args.push('--translate');
-  }
-
   args.push(OUTPUT_FORMAT_FLAGS[options.output_format]);
 
   // Only the JSON file reports the detected language, so every format needs it.

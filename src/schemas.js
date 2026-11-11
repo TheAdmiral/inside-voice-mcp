@@ -25,7 +25,6 @@ export const TranscribeOptionsSchema = z
     output_format: OutputFormat.default('txt'),
     temperature: z.number().min(0).max(1).default(0),
     threads: z.number().min(1).max(16).default(4),
-    translate: z.boolean().default(false),
     word_timestamps: z.boolean().default(false),
     max_len: z.number().min(0).default(0),
     split_on_word: z.boolean().default(false),

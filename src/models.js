@@ -110,7 +110,7 @@ export const REGULAR_MODELS = [
   },
   {
     name: 'large-v3-turbo',
-    description: 'Much faster version of large-v3, nearly as accurate but weaker at translation',
+    description: 'Much faster version of large-v3, nearly as accurate',
     languages: ['99 languages'],
     speed_rating: 2,
     accuracy_rating: 5,

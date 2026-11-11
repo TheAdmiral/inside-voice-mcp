@@ -190,7 +190,6 @@ The server only accepts connections from your own computer, because its tools ca
   - `output_format` (string): Output format – txt, vtt, srt, json, csv (default: 'txt')
   - `temperature` (number): Sampling temperature 0–1 (default: 0)
   - `threads` (number): CPU threads to use (default: 4)
-  - `translate` (boolean): Translate to English (default: false)
   - `word_timestamps` (boolean): Add a `words` array with each word's start and end time to every segment in `metadata.segments` (default: false). Times are approximate, and languages written without spaces get one word per segment.
   - `vad` (boolean): Skip the parts without speech (default: on when the [VAD model](#skipping-silence-recommended) is installed). Setting it to `true` without the VAD model installed gives an error
   - `vocabulary` (array of strings): Names and terms to spell correctly, such as `["Tellet", "Kubernetes"]` (default: none). See [Vocabulary](#vocabulary)
@@ -245,7 +244,7 @@ The regular models. Models ending in `.en` only understand English, and the othe
 | large-v1 | 3.1 GB | ⭐ | ⭐⭐⭐⭐ | Replaced by large-v2 and large-v3 |
 | large-v2 | 3.1 GB | ⭐ | ⭐⭐⭐⭐⭐ | Very accurate but slow |
 | large-v3 | 3.1 GB | ⭐ | ⭐⭐⭐⭐⭐ | The most accurate and the slowest |
-| large-v3-turbo | 1.6 GB | ⭐⭐ | ⭐⭐⭐⭐⭐ | Much faster than large-v3, weaker at translation |
+| large-v3-turbo | 1.6 GB | ⭐⭐ | ⭐⭐⭐⭐⭐ | Much faster than large-v3, nearly as accurate |
 
 #### Recommended for accuracy: large-v3-turbo-q8_0
 

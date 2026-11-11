@@ -15,7 +15,6 @@ test('option defaults apply when options is omitted', () => {
     output_format: 'txt',
     temperature: 0,
     threads: 4,
-    translate: false,
     word_timestamps: false,
     max_len: 0,
     split_on_word: false,
