@@ -13,7 +13,7 @@
 - [x] British English READMEs
 - [x] More model options and descriptions
 - [x] Model manager
-- [ ] Can the license include a copyright for me too?
+- [x] Can the license include a copyright for me too?
   - Add a second `Copyright (c) 2026 <your name>` line under the SmartLittleApps one in `LICENSE`, and set `author` in `package.json`. Check the name to use first.
 - [ ] I want to review and edit all the user-facing copy. Create a strings file that will be used as the source of truth for all the copy in the app.
   - Add `src/strings.js`, grouped by area: tool and option descriptions, `list_models` and `health_check` text, model descriptions, error messages, and the model manager and setup script output.
