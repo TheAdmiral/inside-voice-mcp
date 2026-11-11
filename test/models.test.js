@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -17,14 +17,12 @@ import {
   isVadModelInstalled,
   modelsFromRepositoryFiles,
 } from '../src/models.js';
+import { makeTempDir, restoreEnvironmentAfter } from './helpers.js';
 
 /** Points WHISPER_MODELS_PATH at an empty directory for the length of the test. */
 function useTemporaryModelsDir(t) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-models-'));
-  t.after(() => {
-    delete process.env.WHISPER_MODELS_PATH;
-    rmSync(dir, { recursive: true, force: true });
-  });
+  const dir = makeTempDir(t, 'models');
+  restoreEnvironmentAfter(t);
   process.env.WHISPER_MODELS_PATH = dir;
 
   return dir;
@@ -40,9 +38,7 @@ function fakeFetch(t, respond) {
 }
 
 test('models live in the home directory by default', (t) => {
-  t.after(() => {
-    delete process.env.WHISPER_MODELS_PATH;
-  });
+  restoreEnvironmentAfter(t);
   delete process.env.WHISPER_MODELS_PATH;
 
   assert.equal(getModelsDir(), join(homedir(), '.inside-voice-mcp', 'models'));
@@ -78,9 +74,7 @@ test('files that are not whisper models are not listed as installed', (t) => {
 });
 
 test('a missing models directory gives no models', (t) => {
-  t.after(() => {
-    delete process.env.WHISPER_MODELS_PATH;
-  });
+  restoreEnvironmentAfter(t);
   process.env.WHISPER_MODELS_PATH = join(tmpdir(), 'inside-voice-no-such-directory');
 
   assert.deepEqual(getInstalledModels(), []);

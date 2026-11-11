@@ -1,17 +1,14 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { REGULAR_MODEL_NAMES } from '../src/models.js';
 import { listModelsTool } from '../src/tools/list-models.js';
+import { makeTempDir, restoreEnvironmentAfter } from './helpers.js';
 
 async function listModels(t, installedFiles) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-models-'));
-  t.after(() => {
-    delete process.env.WHISPER_MODELS_PATH;
-    rmSync(dir, { recursive: true, force: true });
-  });
+  const dir = makeTempDir(t, 'models');
+  restoreEnvironmentAfter(t);
   process.env.WHISPER_MODELS_PATH = dir;
 
   for (const [fileName, contents] of Object.entries(installedFiles)) {

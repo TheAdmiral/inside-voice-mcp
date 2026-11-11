@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { transcribeTool } from '../src/tools/transcribe.js';
+import { installFakeWhisper, writeExecutable } from './helpers.js';
 
-const WHISPER_JSON = JSON.stringify({
+const WHISPER_JSON = {
   result: { language: 'sv' },
   transcription: [
     {
@@ -19,7 +19,7 @@ const WHISPER_JSON = JSON.stringify({
       tokens: [{ text: ' Hi', offsets: { from: 3000, to: 3900 } }],
     },
   ],
-});
+};
 
 const DIARIZATION_JSON = JSON.stringify({
   segments: [
@@ -31,16 +31,11 @@ const DIARIZATION_JSON = JSON.stringify({
 
 /** Replaces whisper-cli and Python with fakes, and keeps the tests away from the Keychain. */
 function setUpFakeTools(t) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-tool-'));
-  const originalEnvironment = { ...process.env };
-  t.after(() => {
-    process.env = originalEnvironment;
-    rmSync(dir, { recursive: true, force: true });
-  });
+  const { dir } = installFakeWhisper(t, { json: WHISPER_JSON, text: 'plain transcript' });
 
   const pythonCallsPath = join(dir, 'python-calls');
   const pythonPath = join(dir, 'python');
-  writeFileSync(
+  writeExecutable(
     pythonPath,
     `#!/bin/sh
 if [ "$1" = "-c" ]; then exit 0; fi
@@ -48,28 +43,9 @@ echo "$@" >> "${pythonCallsPath}"
 echo '${DIARIZATION_JSON}'
 `,
   );
-  chmodSync(pythonPath, 0o755);
 
-  const whisperPath = join(dir, 'whisper-cli');
-  writeFileSync(
-    whisperPath,
-    `#!/bin/sh
-while [ $# -gt 0 ]; do
-  if [ "$1" = "--output-file" ]; then out="$2"; fi
-  shift
-done
-echo '${WHISPER_JSON}' > "$out.json"
-echo 'plain transcript' > "$out.txt"
-echo '[00:00:00.000 --> 00:00:02.000]   plain transcript'
-`,
-  );
-  chmodSync(whisperPath, 0o755);
-
-  process.env.PATH = `${dir}:${originalEnvironment.PATH}`;
   process.env.PYTHON_EXECUTABLE = pythonPath;
   process.env.HF_TOKEN = 'token-from-test';
-  process.env.WHISPER_MODELS_PATH = dir;
-  writeFileSync(join(dir, 'ggml-tiny.en.bin'), '');
 
   const audioPath = join(dir, 'sample.wav');
   writeFileSync(audioPath, '');

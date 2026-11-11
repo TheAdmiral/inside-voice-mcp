@@ -1,15 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
-import { platform, tmpdir } from 'node:os';
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { platform } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { healthCheckTool } from '../src/tools/health-check.js';
@@ -18,6 +9,7 @@ import {
   getConfigPath,
   saveHuggingFaceToken,
 } from '../src/utils/huggingface-auth.js';
+import { makeTempDir, restoreEnvironmentAfter, writeExecutable } from './helpers.js';
 
 const skipUnlessMac = { skip: platform() !== 'darwin' };
 
@@ -27,21 +19,8 @@ const skipUnlessMac = { skip: platform() !== 'darwin' };
  * The fake stores what it is given in a file. With `brokenKeychain` it stores nothing.
  */
 function setUpIsolatedHome(t, { brokenKeychain = false } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-token-'));
-  const originalHome = process.env.HOME;
-  const originalPath = process.env.PATH;
-  const originalToken = process.env.HF_TOKEN;
-
-  t.after(() => {
-    process.env.HOME = originalHome;
-    process.env.PATH = originalPath;
-    if (originalToken === undefined) {
-      delete process.env.HF_TOKEN;
-    } else {
-      process.env.HF_TOKEN = originalToken;
-    }
-    rmSync(dir, { recursive: true, force: true });
-  });
+  const dir = makeTempDir(t, 'token');
+  restoreEnvironmentAfter(t);
 
   const keychainPath = join(dir, 'fake-keychain');
   const securityPath = join(dir, 'security');
@@ -49,7 +28,7 @@ function setUpIsolatedHome(t, { brokenKeychain = false } = {}) {
     ? 'cat > /dev/null'
     : `sed -n 's/.* -w "\\(.*\\)"$/\\1/p' > "${keychainPath}"`;
 
-  writeFileSync(
+  writeExecutable(
     securityPath,
     `#!/bin/sh
 if [ "$1" = "-i" ]; then
@@ -63,10 +42,9 @@ fi
 exit 44
 `,
   );
-  chmodSync(securityPath, 0o755);
 
   process.env.HOME = dir;
-  process.env.PATH = `${dir}:${originalPath}`;
+  process.env.PATH = `${dir}:${process.env.PATH}`;
   delete process.env.HF_TOKEN;
 
   return { keychainPath };

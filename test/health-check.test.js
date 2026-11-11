@@ -1,18 +1,12 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { test } from 'node:test';
 import { healthCheckTool } from '../src/tools/health-check.js';
+import { makeTempDir, restoreEnvironmentAfter } from './helpers.js';
 
 /** Runs the health check with no whisper-cli on the PATH and an empty models directory. */
 async function checkWithNothingInstalled(t) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-health-'));
-  const originalEnvironment = { ...process.env };
-  t.after(() => {
-    process.env = originalEnvironment;
-    rmSync(dir, { recursive: true, force: true });
-  });
+  const dir = makeTempDir(t, 'health');
+  restoreEnvironmentAfter(t);
 
   process.env.PATH = dir;
   process.env.WHISPER_MODELS_PATH = dir;

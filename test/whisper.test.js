@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
 import {
-  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
-  rmSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { TranscribeOptionsSchema } from '../src/schemas.js';
@@ -20,6 +17,7 @@ import {
   parseWhisperJson,
   transcribe,
 } from '../src/whisper.js';
+import { installFakeWhisper } from './helpers.js';
 
 const options = (overrides = {}) => TranscribeOptionsSchema.parse(overrides);
 
@@ -128,40 +126,9 @@ const EXPECTED_CUE_FILES = {
   csv: 'start,end,text\n0,1000,"hello"',
 };
 
-/** Puts a fake whisper-cli on the PATH that writes output files and records where it put them. */
-function setUpFakeWhisper(t, { exitCode = 0 } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-fake-whisper-'));
-  const originalPath = process.env.PATH;
-  t.after(() => {
-    process.env.PATH = originalPath;
-    delete process.env.WHISPER_MODELS_PATH;
-    rmSync(dir, { recursive: true, force: true });
-  });
-
-  const recordPath = join(dir, 'output-base');
-  const whisperPath = join(dir, 'whisper-cli');
-  writeFileSync(
-    whisperPath,
-    `#!/bin/sh
-while [ $# -gt 0 ]; do
-  if [ "$1" = "--output-file" ]; then out="$2"; fi
-  shift
-done
-printf '%s' "$out" > "${recordPath}"
-echo '{"result":{"language":"sv"},"transcription":[{"text":" hello","offsets":{"from":0,"to":1000}}]}' > "$out.json"
-echo hello > "$out.txt"
-printf '1\\n00:00:00,000 --> 00:00:01,000\\n hello\\n' > "$out.srt"
-printf 'WEBVTT\\n\\n00:00:00.000 --> 00:00:01.000\\n hello\\n' > "$out.vtt"
-printf 'start,end,text\\n0,1000," hello"\\n' > "$out.csv"
-echo '[00:00:00.000 --> 00:00:01.000]   hello'
-exit ${exitCode}
-`,
-  );
-  chmodSync(whisperPath, 0o755);
-  process.env.PATH = `${dir}:${originalPath}`;
-
-  process.env.WHISPER_MODELS_PATH = dir;
-  writeFileSync(join(dir, 'ggml-tiny.en.bin'), '');
+/** Installs a fake whisper-cli, and an empty audio file in a directory of its own. */
+function setUpFakeWhisper(t, fakeOptions) {
+  const { dir, recordPath } = installFakeWhisper(t, fakeOptions);
 
   const audioDir = mkdtempSync(join(dir, 'audio-'));
   const audioPath = join(audioDir, 'sample.wav');

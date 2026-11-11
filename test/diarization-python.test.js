@@ -1,23 +1,22 @@
 import assert from 'node:assert/strict';
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { findDiarizationPython, runDiarization } from '../src/utils/diarization-python.js';
+import { makeTempDir, restoreEnvironmentAfter, writeExecutable } from './helpers.js';
 
 /** Writes a fake Python that records its arguments and prints diarization output. */
 function setUpFakePython(t) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-fake-python-'));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const dir = makeTempDir(t, 'fake-python');
 
   // Setting the variable also keeps these tests away from the real Keychain.
+  restoreEnvironmentAfter(t);
   process.env.HF_TOKEN = 'token-from-test';
-  t.after(() => delete process.env.HF_TOKEN);
 
   const argsPath = join(dir, 'args');
   const tokenPath = join(dir, 'token');
   const pythonPath = join(dir, 'python');
-  writeFileSync(
+  writeExecutable(
     pythonPath,
     `#!/bin/sh
 echo "$@" > "${argsPath}"
@@ -25,7 +24,6 @@ echo "$HF_TOKEN" > "${tokenPath}"
 echo '{"segments":[{"start":0,"end":1,"speaker":"SPEAKER_00"}],"device":"cpu"}'
 `,
   );
-  chmodSync(pythonPath, 0o755);
 
   return { python: { command: pythonPath, argsBeforeScript: [] }, pythonPath, argsPath, tokenPath };
 }
@@ -116,22 +114,11 @@ test('puts the arguments for the runner before the script', async (t) => {
 
 /** Replaces PATH with a directory holding only a fake uv, if `withUv` is true. */
 function setUpPath(t, withUv) {
-  const dir = mkdtempSync(join(tmpdir(), 'inside-voice-fake-path-'));
-  const originalPath = process.env.PATH;
-  const originalPython = process.env.PYTHON_EXECUTABLE;
-  t.after(() => {
-    process.env.PATH = originalPath;
-    if (originalPython === undefined) {
-      delete process.env.PYTHON_EXECUTABLE;
-    } else {
-      process.env.PYTHON_EXECUTABLE = originalPython;
-    }
-    rmSync(dir, { recursive: true, force: true });
-  });
+  const dir = makeTempDir(t, 'fake-path');
+  restoreEnvironmentAfter(t);
 
   if (withUv) {
-    writeFileSync(join(dir, 'uv'), '#!/bin/sh\nexit 0\n');
-    chmodSync(join(dir, 'uv'), 0o755);
+    writeExecutable(join(dir, 'uv'), '#!/bin/sh\nexit 0\n');
   }
 
   process.env.PATH = dir;
