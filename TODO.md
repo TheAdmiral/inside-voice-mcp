@@ -13,3 +13,14 @@
 - [x] British English READMEs
 - [x] More model options and descriptions
 - [x] Model manager
+- [ ] Can the license include a copyright for me too?
+  - Add a second `Copyright (c) 2026 <your name>` line under the SmartLittleApps one in `LICENSE`, and set `author` in `package.json`. Check the name to use first.
+- [ ] I want to review and edit all the user-facing copy. Create a strings file that will be used as the source of truth for all the copy in the app.
+  - Add `src/strings.js`, grouped by area: tool and option descriptions, `list_models` and `health_check` text, model descriptions, error messages, and the model manager and setup script output.
+  - Use a JS module rather than JSON, so that text with values in it, such as a model name, can be a small function.
+  - Move every string out of `src/` and `scripts/` into it, and add a test that catches new strings written outside it. READMEs stay as they are.
+- [ ] I want to be able to supply special terms and their spellings to the server in order to hint the transcription. For example, I work for the company ‘Tellet’, which is often transcribed as ‘tell it’.
+  - whisper-cli takes an initial prompt (`--prompt`, with `--carry-initial-prompt` to keep it for every window), which steers spellings without changing anything else.
+  - Add a `vocabulary` option to `transcribe` (a list of terms), plus a saved list in `~/.inside-voice-mcp/vocabulary.txt` that applies to every transcription. Merge them into one prompt.
+  - The prompt is limited to about 224 tokens, so warn when the list is too long.
+  - Maybe later: exact replacements such as ‘tell it’ → ‘Tellet’ after transcription, which are reliable but could change the wrong words.
