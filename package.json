@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
+    "start:http": "node src/index.js --http",
     "dev": "node --watch src/index.js",
     "test": "node --test test/*.test.js",
     "test:python": "uv run --no-project --python 3.13 --with numpy python test/test_diarize.py",
@@ -15,7 +16,8 @@
     "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
     "setup:diarization": "node scripts/setup-diarization.js",
     "setup:token": "node scripts/setup-huggingface-auth.js",
-    "models": "node scripts/model-manager.js"
+    "models": "node scripts/model-manager.js",
+    "build:mcpb": "node scripts/build-mcpb.js"
   },
   "engines": {
     "node": ">=24.2"

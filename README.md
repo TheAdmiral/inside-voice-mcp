@@ -101,7 +101,15 @@ Add to your MCP client configuration:
 
 #### Claude Desktop
 
-In Claude Desktop, open **Settings → Developer → Edit Config** and add the configuration above to `claude_desktop_config.json`, then restart the app.
+If you installed Inside Voice with Homebrew, open the Claude Desktop extension that Homebrew installed and click **Install**:
+
+```bash
+open "$(brew --prefix)/share/inside-voice/inside-voice.mcpb"
+```
+
+The extension starts the server that Homebrew installed, so `brew upgrade` keeps it up to date. It only works with the Homebrew install. Run `npm run build:mcpb` to build it yourself into `build/inside-voice.mcpb`.
+
+If you installed from source, open **Settings → Developer → Edit Config** and add the configuration above to `claude_desktop_config.json`, then restart the app.
 
 Claude Desktop starts MCP servers with a minimal `PATH`, not the one from your shell. This means it may not find `node`, or may find an older version than Node 24.2. It may also not find `whisper-cli` or `uv`. To avoid this, give the full path to `node` and set `PATH` to include the folder where Homebrew installs them:
 
@@ -120,6 +128,21 @@ Claude Desktop starts MCP servers with a minimal `PATH`, not the one from your s
 ```
 
 Run `which node whisper-cli uv` in your terminal to see where they are installed on your Mac. On Intel Macs, Homebrew uses `/usr/local/bin` instead of `/opt/homebrew/bin`. Run the `health_check` tool from Claude Desktop to confirm the server can find everything.
+
+#### HTTP clients, such as Jan
+
+Some MCP clients connect to a URL instead of starting the server themselves. For these, run the server over HTTP:
+
+```bash
+npm run start:http                   # http://127.0.0.1:3700/mcp
+node src/index.js --port 4000        # http://127.0.0.1:4000/mcp
+```
+
+With Homebrew, run `brew services start inside-voice` to keep it running in the background and start it when you log in.
+
+In your client, add a Streamable HTTP server with the URL `http://127.0.0.1:3700/mcp`.
+
+The server only accepts connections from your own computer, because its tools can read audio files and write transcripts anywhere you can. It has no password, so any program running on your computer can use it while it is running.
 
 ### Environment Variables
 
@@ -188,13 +211,15 @@ The regular models. Models ending in `.en` only understand English, and the othe
 ```
 ├── src/                    # JavaScript source code, run directly
 │   ├── index.js           # Server entry point
+│   ├── http-server.js     # Serves the server over HTTP on localhost
 │   ├── models.js          # The model list, and installing and deleting models
 │   ├── schemas.js         # Zod schemas for tool options
 │   ├── tools/             # MCP tool implementations
 │   ├── whisper.js         # whisper.cpp integration
 │   └── utils/             # Speaker diarization & utilities
+├── packaging/             # Homebrew formula and the Claude Desktop extension launcher
 ├── python/                # Diarization script and Python dependencies
-├── scripts/               # Model manager, setup and manual smoke test
+├── scripts/               # Model manager, setup, extension build and manual smoke test
 └── test/                  # Tests (node --test)
     └── fixtures/          # Sample audio
 ```

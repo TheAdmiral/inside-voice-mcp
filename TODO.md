@@ -6,7 +6,7 @@
 - [ ] Create the `TheAdmiral/homebrew-tap` repository for the formula
 - [ ] Tag a release for the formula to download
 - [ ] Friendly setup wizard
-- [ ] Run as a server on localhost:port
+- [x] Run as a server on localhost:port
 - [ ] Transcription web UI
 - [ ] Install as a binary
 - [ ] Further macOS optimisation

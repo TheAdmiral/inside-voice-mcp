@@ -21,6 +21,11 @@ class InsideVoice < Formula
 
   def install
     system "npm", "ci", "--omit=dev", "--ignore-scripts"
+
+    # The Claude Desktop extension starts the inside-voice-mcp command installed below.
+    system Formula["node@24"].opt_bin/"node", "scripts/build-mcpb.js"
+    pkgshare.install "build/inside-voice.mcpb"
+
     libexec.install "src", "python", "scripts", "node_modules", "package.json"
 
     # MCP clients started from a desktop app often have a PATH without Homebrew on it.
@@ -33,6 +38,14 @@ class InsideVoice < Formula
     end
   end
 
+  # Serves the MCP server on http://127.0.0.1:3700/mcp for HTTP clients such as Jan.
+  service do
+    run [opt_bin/"inside-voice-mcp", "--http"]
+    keep_alive true
+    log_path var/"log/inside-voice.log"
+    error_log_path var/"log/inside-voice.log"
+  end
+
   def caveats
     <<~EOS
       Install a whisper model, or run inside-voice-models help to manage them:
@@ -43,7 +56,15 @@ class InsideVoice < Formula
         inside-voice-setup-diarization
         inside-voice-setup-token
 
-      In your MCP client, use the command: #{opt_bin}/inside-voice-mcp
+      To add Inside Voice to Claude Desktop, open the extension:
+        open #{opt_pkgshare}/inside-voice.mcpb
+
+      For MCP clients that start the server themselves, use the command:
+        #{opt_bin}/inside-voice-mcp
+
+      For MCP clients that connect to a URL, such as Jan, start the HTTP server with
+        brew services start inside-voice
+      and connect to http://127.0.0.1:3700/mcp
     EOS
   end
 
@@ -52,5 +73,6 @@ class InsideVoice < Formula
               '"protocolVersion":"2025-06-18","capabilities":{},' \
               '"clientInfo":{"name":"brew-test","version":"1"}}}'
     assert_match "serverInfo", pipe_output(bin/"inside-voice-mcp", "#{request}\n", 0)
+    assert_path_exists pkgshare/"inside-voice.mcpb"
   end
 end
