@@ -21,9 +21,8 @@
   - Move every string out of `src/` and `scripts/` into it, and add a test that catches new strings written outside it. READMEs stay as they are.
 - [ ] I want to be able to supply special terms and their spellings to the server in order to hint the transcription. For example, I work for the company ‘Tellet’, which is often transcribed as ‘tell it’.
   - whisper-cli takes an initial prompt (`--prompt`, with `--carry-initial-prompt` to keep it for every window), which steers spellings without changing anything else.
-  - Add a `vocabulary` option to `transcribe` (a list of terms), plus a saved list in `~/.inside-voice-mcp/vocabulary.txt` that applies to every transcription. Merge them into one prompt.
+  - Add a `vocabulary` option to `transcribe` (a list of terms).
   - The prompt is limited to about 224 tokens, so warn when the list is too long.
-  - Maybe later: exact replacements such as ‘tell it’ → ‘Tellet’ after transcription, which are reliable but could change the wrong words.
 - [ ] Rewrite everything apart from the Python in Rust, on a new branch
   - Main gain: a single binary with no Node, which avoids Claude Desktop's PATH problems and lets the `.mcpb` extension contain the server itself. Transcription is no faster, because the time is spent in whisper-cli and pyannote.
   - About 2,500 lines of JS and 1,700 of tests to port. Likely crates: `rmcp` (official MCP SDK, stdio and HTTP), `serde` and `schemars` in place of zod, `reqwest` and `tokio`, `clap`, `rpassword`.
