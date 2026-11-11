@@ -24,15 +24,15 @@ Inside Voice is a high-performance Model Context Protocol (MCP) server providing
 - A Mac with Apple Silicon
 - Node.js 24.2+
 - whisper.cpp (`brew install whisper-cpp`)
-- **For audio format conversion**: ffmpeg (`brew install ffmpeg`) – automatically handles MP3, M4A, FLAC, OGG, etc.
+- **Optional, for unusual audio formats**: ffmpeg (`brew install ffmpeg`) – only needed for formats macOS cannot read, such as WMA and video files
 - **For speaker diarisation**: uv (`brew install uv`) and a HuggingFace token (free). uv fetches Python and the packages itself
 
 ### Supported Audio Formats
 
 - **Native whisper.cpp formats**: WAV, FLAC
-- **Auto-converted formats**: MP3, M4A, AAC, OGG, WMA, and more
-- **Automatic conversion**: Powered by ffmpeg with 16kHz/mono optimisation for whisper.cpp
-- **Format detection**: Automatic format detection and conversion when needed
+- **Auto-converted formats**: MP3, M4A, AAC, Opus, Ogg, AIFF, and more
+- **Automatic conversion**: Converted to 16 kHz mono WAV with `afconvert`, which comes with macOS
+- **Other formats**: If `afconvert` cannot read a file, such as WMA or a video, ffmpeg is used instead when it is installed
 
 ### Installation
 

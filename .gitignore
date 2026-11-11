@@ -84,6 +84,7 @@ LLM-*/
 *.m4a
 *.flac
 *.ogg
+*.opus
 *.aac
 *.wma
 *.aiff

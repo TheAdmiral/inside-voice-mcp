@@ -9,7 +9,6 @@ class InsideVoice < Formula
 
   depends_on arch: :arm64
   depends_on :macos
-  depends_on "ffmpeg"
   depends_on "node@24"
   depends_on "uv"
   depends_on "whisper.cpp"
@@ -50,6 +49,10 @@ class InsideVoice < Formula
 
   def caveats
     <<~EOS
+      Audio is converted with afconvert, which comes with macOS. For formats it
+      cannot read, such as WMA and video files, also install ffmpeg:
+        brew install ffmpeg
+
       Install a whisper model, or run inside-voice-models help to manage them:
         inside-voice-models install base.en
 
