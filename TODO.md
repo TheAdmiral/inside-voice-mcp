@@ -24,3 +24,8 @@
   - Add a `vocabulary` option to `transcribe` (a list of terms), plus a saved list in `~/.inside-voice-mcp/vocabulary.txt` that applies to every transcription. Merge them into one prompt.
   - The prompt is limited to about 224 tokens, so warn when the list is too long.
   - Maybe later: exact replacements such as ‘tell it’ → ‘Tellet’ after transcription, which are reliable but could change the wrong words.
+- [ ] Rewrite everything apart from the Python in Rust, on a new branch
+  - Main gain: a single binary with no Node, which avoids Claude Desktop's PATH problems and lets the `.mcpb` extension contain the server itself. Transcription is no faster, because the time is spent in whisper-cli and pyannote.
+  - About 2,500 lines of JS and 1,700 of tests to port. Likely crates: `rmcp` (official MCP SDK, stdio and HTTP), `serde` and `schemars` in place of zod, `reqwest` and `tokio`, `clap`, `rpassword`.
+  - Embed `diarize.py` and its lock file in the binary and write them to `~/.inside-voice-mcp` when needed. Rewrite `CLAUDE.md` for Rust.
+  - Work in stages, checking each against the JS version: CLI and model manager, then the stdio server with `transcribe`, then HTTP, diarisation and packaging.
