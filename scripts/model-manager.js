@@ -17,6 +17,8 @@ import {
 
 const USAGE = `Manage the whisper models Inside Voice uses.
 
+Usage: inside-voice-mcp models [command]
+
 Commands:
   list                 Show the installed models (the default)
   available            Show every model you can install, with its size
@@ -30,7 +32,7 @@ is recommended for accuracy.
 
 The VAD model, called ${VAD_MODEL_NAME}, lets whisper skip the parts without speech, which is
 faster and avoids made-up text in silences. It is installed along with any whisper model,
-or on its own with: install ${VAD_MODEL_NAME}`;
+or on its own with: inside-voice-mcp models install ${VAD_MODEL_NAME}`;
 
 // One reader is shared by every question, because a reader takes all the input available,
 // which can include answers to later questions when they are piped in.
