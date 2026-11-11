@@ -36,6 +36,13 @@ export const TranscribeOptionsSchema = z
         'Skip the parts without speech, which is faster and avoids made-up text in silences. ' +
           'Used by default when the VAD model is installed',
       ),
+    vocabulary: z
+      .array(z.string().trim().min(1))
+      .default([])
+      .describe(
+        'Names and terms to spell correctly, such as company or product names. ' +
+          'whisper is more likely to write them this way, but it is not guaranteed',
+      ),
     diarize: z.boolean().default(false).describe('Identify who is speaking in each segment'),
     min_speakers: z.number().min(1).default(1).describe('Fewest speakers to look for'),
     max_speakers: z.number().min(1).default(10).describe('Most speakers to look for'),

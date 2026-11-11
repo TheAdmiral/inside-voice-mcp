@@ -7,6 +7,13 @@ import { runCommand } from './utils/run-command.js';
 
 const WHISPER_BINARY = 'whisper-cli';
 
+// whisper reads at most this many tokens of the prompt, which is half its text context.
+export const MAX_PROMPT_TOKENS = 224;
+
+// English averages about 4 characters a token, but names split into more tokens, so this
+// errs on the side of warning too early.
+const CHARACTERS_PER_TOKEN = 3;
+
 const OUTPUT_FORMAT_FLAGS = {
   txt: '--output-txt',
   vtt: '--output-vtt',
@@ -19,7 +26,7 @@ const OUTPUT_FORMAT_FLAGS = {
  * @typedef {{ start: number, end: number, text: string }} Word
  * @typedef {{ start: number, end: number, text: string, words?: Word[] }} Segment
  * @typedef {{ text: string, segments?: Segment[], language?: string, model_used: string,
- *   vad_used: boolean, processing_time: number }} TranscriptionResult
+ *   vad_used: boolean, warnings: string[], processing_time: number }} TranscriptionResult
  */
 
 /**
@@ -43,6 +50,41 @@ function chooseVadModel(vadOption) {
 }
 
 /**
+ * Returns the prompt that hints whisper towards the vocabulary's spellings, or null when
+ * there is no vocabulary.
+ *
+ * whisper treats the prompt as the text before the recording. In testing, a sentence like
+ * this worked with every model, but a bare list of terms did not work with base.en.
+ */
+export function buildVocabularyPrompt(vocabulary) {
+  const terms = [...new Set(vocabulary)];
+  if (terms.length === 0) {
+    return null;
+  }
+
+  const termList = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(terms);
+  return `Words used in this recording include ${termList}.`;
+}
+
+/** Returns warnings about the vocabulary, such as it being too long for whisper to use. */
+export function checkVocabulary(vocabulary) {
+  const prompt = buildVocabularyPrompt(vocabulary);
+  if (prompt === null) {
+    return [];
+  }
+
+  const estimatedTokens = Math.ceil(prompt.length / CHARACTERS_PER_TOKEN);
+  if (estimatedTokens <= MAX_PROMPT_TOKENS) {
+    return [];
+  }
+
+  return [
+    `The vocabulary may be too long. whisper reads about ${MAX_PROMPT_TOKENS} tokens of it, ` +
+      'so some terms may be ignored. Keep it to the terms this recording needs',
+  ];
+}
+
+/**
  * `options` are validated options, see TranscribeOptionsSchema in schemas.js.
  * @returns {Promise<TranscriptionResult>}
  */
@@ -62,6 +104,7 @@ export async function transcribe(audioPath, options) {
   }
 
   const vadModelPath = chooseVadModel(options.vad);
+  const warnings = checkVocabulary(options.vocabulary);
 
   // whisper-cli writes its output files to disk, so keep them away from the user's audio.
   const outputDir = await mkdtemp(join(tmpdir(), 'inside-voice-whisper-'));
@@ -82,6 +125,7 @@ export async function transcribe(audioPath, options) {
       ...output,
       model_used: options.model,
       vad_used: vadModelPath !== null,
+      warnings,
       processing_time: Date.now() - startTime,
     };
   } finally {
@@ -147,6 +191,13 @@ export function buildWhisperArgs(audioPath, modelPath, outputBase, options, vadM
 
   if (options.split_on_word) {
     args.push('--split-on-word');
+  }
+
+  // Carrying the prompt repeats it for every 30-second window, not just the first, so the
+  // vocabulary helps all the way through a long recording.
+  const vocabularyPrompt = buildVocabularyPrompt(options.vocabulary);
+  if (vocabularyPrompt) {
+    args.push('--prompt', vocabularyPrompt, '--carry-initial-prompt');
   }
 
   // whisper.cpp still gives times from the start of the original audio when it skips silence.

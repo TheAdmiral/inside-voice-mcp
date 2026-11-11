@@ -19,6 +19,7 @@ test('option defaults apply when options is omitted', () => {
     word_timestamps: false,
     max_len: 0,
     split_on_word: false,
+    vocabulary: [],
     diarize: false,
     min_speakers: 1,
     max_speakers: 10,
