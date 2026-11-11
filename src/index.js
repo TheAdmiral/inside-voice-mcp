@@ -74,8 +74,9 @@ export function createServer() {
   return server;
 }
 
-function readOptions() {
+function readOptions(args) {
   const { values } = parseArgs({
+    args,
     options: {
       http: { type: 'boolean', default: false },
       port: { type: 'string' },
@@ -111,8 +112,9 @@ async function runOverHttp(port) {
   }
 }
 
-async function main() {
-  const { useHttp, port } = readOptions();
+/** Starts the server, over stdio or, with --http or --port, over HTTP on localhost. */
+export async function startServer(args) {
+  const { useHttp, port } = readOptions(args);
 
   process.on('uncaughtException', (error) => {
     console.error('Uncaught exception:', error);
@@ -132,7 +134,7 @@ async function main() {
 }
 
 if (import.meta.main) {
-  main().catch((error) => {
+  startServer(process.argv.slice(2)).catch((error) => {
     console.error('Server startup failed:', error.message);
     process.exit(1);
   });

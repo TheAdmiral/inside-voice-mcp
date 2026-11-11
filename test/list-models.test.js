@@ -47,7 +47,7 @@ test('every regular model that is not installed is listed as not downloaded', as
     notDownloaded,
     REGULAR_MODEL_NAMES.filter((name) => name !== 'tiny.en'),
   );
-  assert.match(result.not_downloaded[0].download_note, /npm run models -- install tiny$/);
+  assert.match(result.not_downloaded[0].download_note, /inside-voice-mcp models install tiny$/);
 });
 
 test('recommends large-v3-turbo-q8_0 for accuracy', async (t) => {

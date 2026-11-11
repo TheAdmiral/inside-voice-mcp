@@ -8,7 +8,7 @@
 - [ ] Friendly setup wizard
 - [x] Run as a server on localhost:port
 - [ ] Transcription web UI
-- [ ] Install as a binary
+- [x] Install as a binary
 - [x] Further macOS optimisation
 - [x] British English READMEs
 - [x] More model options and descriptions

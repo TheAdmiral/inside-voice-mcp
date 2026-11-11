@@ -13,13 +13,6 @@ class InsideVoice < Formula
   depends_on "uv"
   depends_on "whisper.cpp"
 
-  COMMANDS = {
-    "inside-voice-mcp"               => "src/index.js",
-    "inside-voice-models"            => "scripts/model-manager.js",
-    "inside-voice-setup-diarization" => "scripts/setup-diarization.js",
-    "inside-voice-setup-token"       => "scripts/setup-huggingface-auth.js",
-  }.freeze
-
   def install
     system "npm", "ci", "--omit=dev", "--ignore-scripts"
 
@@ -29,14 +22,13 @@ class InsideVoice < Formula
 
     libexec.install "src", "python", "scripts", "node_modules", "package.json"
 
+    # One command runs the server and the setup commands, such as inside-voice-mcp models.
     # MCP clients started from a desktop app often have a PATH without Homebrew on it.
-    COMMANDS.each do |command, script|
-      (bin/command).write <<~SH
-        #!/bin/bash
-        export PATH="#{formula_opt_bin("node@24")}:#{HOMEBREW_PREFIX}/bin:$PATH"
-        exec node "#{libexec/script}" "$@"
-      SH
-    end
+    (bin/"inside-voice-mcp").write <<~SH
+      #!/bin/bash
+      export PATH="#{formula_opt_bin("node@24")}:#{HOMEBREW_PREFIX}/bin:$PATH"
+      exec node "#{libexec}/src/cli.js" "$@"
+    SH
   end
 
   # Serves the MCP server on http://127.0.0.1:3700/mcp for HTTP clients such as Jan.
@@ -53,13 +45,13 @@ class InsideVoice < Formula
       cannot read, such as WMA and video files, also install ffmpeg:
         brew install ffmpeg
 
-      Install a whisper model, or run inside-voice-models help to manage them:
-        inside-voice-models install base.en
+      Install a whisper model, or run inside-voice-mcp models help to manage them:
+        inside-voice-mcp models install base.en
 
       For speaker diarization, accept the licences for pyannote/speaker-diarization-3.1
       and pyannote/segmentation-3.0 on huggingface.co, then run:
-        inside-voice-setup-diarization
-        inside-voice-setup-token
+        inside-voice-mcp setup-diarization
+        inside-voice-mcp setup-token
 
       To add Inside Voice to Claude Desktop, open the extension:
         open #{opt_pkgshare}/inside-voice.mcpb
@@ -78,6 +70,7 @@ class InsideVoice < Formula
               '"protocolVersion":"2025-06-18","capabilities":{},' \
               '"clientInfo":{"name":"brew-test","version":"1"}}}'
     assert_match "serverInfo", pipe_output(bin/"inside-voice-mcp", "#{request}\n", 0)
+    assert_match "inside-voice-mcp models", shell_output("#{bin}/inside-voice-mcp help")
     assert_path_exists pkgshare/"inside-voice.mcpb"
   end
 end

@@ -56,20 +56,26 @@ async function reportSavedLocation(location, useKeychain) {
   }
 }
 
-try {
-  const { values } = parseArgs({ options: { file: { type: 'boolean', default: false } } });
-  const useKeychain = !values.file;
+/** Asks for a HuggingFace token and stores it. Pass --file to store it in a file. */
+export async function run(args) {
+  try {
+    const { values } = parseArgs({
+      args,
+      options: { file: { type: 'boolean', default: false } },
+    });
+    const useKeychain = !values.file;
 
-  const token = (await askForHiddenInput('HuggingFace token (input is hidden): ')).trim();
-  process.stdout.write('\n');
+    const token = (await askForHiddenInput('HuggingFace token (input is hidden): ')).trim();
+    process.stdout.write('\n');
 
-  if (!token) {
-    throw new Error('No token entered, so nothing was saved.');
+    if (!token) {
+      throw new Error('No token entered, so nothing was saved.');
+    }
+
+    const location = await saveHuggingFaceToken(token, { useKeychain });
+    await reportSavedLocation(location, useKeychain);
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
   }
-
-  const location = await saveHuggingFaceToken(token, { useKeychain });
-  await reportSavedLocation(location, useKeychain);
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
 }

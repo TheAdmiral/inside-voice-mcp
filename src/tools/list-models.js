@@ -40,7 +40,7 @@ function describeMissingModel(regularModel) {
     available: false,
     type: 'regular',
     ...regularModel,
-    download_note: `Install with the model manager: npm run models -- install ${regularModel.name}`,
+    download_note: `Install with the model manager: inside-voice-mcp models install ${regularModel.name}`,
   };
 }
 
@@ -65,8 +65,8 @@ async function handler() {
     },
     download_instructions: {
       model_manager:
-        'Run npm run models -- available to see every model with its size, including ' +
-        'advanced models, then npm run models -- install <model>',
+        'Run inside-voice-mcp models available to see every model with its size, including ' +
+        'advanced models, then inside-voice-mcp models install <model>',
       models_directory: `Models are stored in: ${getModelsDir()}`,
     },
   });

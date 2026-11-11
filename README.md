@@ -40,22 +40,25 @@ Inside Voice is a high-performance Model Context Protocol (MCP) server providing
 git clone https://github.com/TheAdmiral/inside-voice-mcp.git
 cd inside-voice-mcp
 npm install
+npm link    # Adds the inside-voice-mcp command
 
 # Install the base.en model to ~/.inside-voice-mcp/models
-npm run models -- install base.en
+inside-voice-mcp models install base.en
 ```
+
+Run `inside-voice-mcp help` to see every command. Homebrew installs the same command.
 
 ### Managing Models
 
 The model manager lists, installs and deletes whisper models, and shows the size of each one.
 
 ```bash
-npm run models                          # Show the installed models
-npm run models -- available             # Show every model you can install
-npm run models -- install               # Choose models to install from a list
-npm run models -- install tiny.en small # Or name them
-npm run models -- delete                # Choose models to delete from a list
-npm run models -- delete small          # Or name them
+inside-voice-mcp models                          # Show the installed models
+inside-voice-mcp models available                # Show every model you can install
+inside-voice-mcp models install                  # Choose models to install from a list
+inside-voice-mcp models install tiny.en small    # Or name them
+inside-voice-mcp models delete                   # Choose models to delete from a list
+inside-voice-mcp models delete small             # Or name them
 ```
 
 **Regular models** are the standard whisper models, listed in the [model comparison](#model-comparison). **Advanced models** are quantised versions of them, such as `base.en-q5_1`. They are smaller and use less memory, but are slightly less accurate. One of them is [recommended for accuracy](#recommended-for-accuracy-large-v3-turbo-q8_0). Both kinds come from the [whisper.cpp repository on Hugging Face](https://huggingface.co/ggerganov/whisper.cpp), and both work with the `transcribe` tool once installed.
@@ -67,7 +70,7 @@ The VAD (voice activity detection) model lets whisper skip the parts of a record
 The model manager installs it along with any whisper model. If you installed your models before this, install it on its own:
 
 ```bash
-npm run models -- install vad
+inside-voice-mcp models install vad
 ```
 
 Once it is installed, the `transcribe` tool uses it automatically. Set the `vad` option to `false` to transcribe without it.
@@ -79,7 +82,7 @@ Basic transcription works without any of this. Only speaker diarisation needs it
 1. Install uv, then download Python and the packages (about 1.5 GB):
    ```bash
    brew install uv
-   npm run setup:diarization
+   inside-voice-mcp setup-diarization
    ```
 
 2. Get a free HuggingFace token:
@@ -88,13 +91,13 @@ Basic transcription works without any of this. Only speaker diarisation needs it
    - Accept the licences for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) and [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
    - Store the token. You only need to do this once:
      ```bash
-     npm run setup:token
+     inside-voice-mcp setup-token
      ```
 
 The token is saved in the macOS Keychain. If you would rather not use the Keychain, save it to a private file instead:
 
 ```bash
-npm run setup:token -- --file
+inside-voice-mcp setup-token --file
 ```
 
 This saves it in `~/.inside-voice-mcp/config.json`, readable only by you. It is also used if the Keychain is unavailable. The server refuses to use that file if other users can read it.
@@ -153,8 +156,8 @@ Run `which node whisper-cli uv` in your terminal to see where they are installed
 Some MCP clients connect to a URL instead of starting the server themselves. For these, run the server over HTTP:
 
 ```bash
-npm run start:http                   # http://127.0.0.1:3700/mcp
-node src/index.js --port 4000        # http://127.0.0.1:4000/mcp
+inside-voice-mcp --http              # http://127.0.0.1:3700/mcp
+inside-voice-mcp --port 4000         # http://127.0.0.1:4000/mcp
 ```
 
 With Homebrew, run `brew services start inside-voice` to keep it running in the background and start it when you log in.
@@ -167,7 +170,7 @@ The server only accepts connections from your own computer, because its tools ca
 
 - `WHISPER_MODELS_PATH`: Absolute path to your whisper models (default: `~/.inside-voice-mcp/models`)
 - `PYTHON_EXECUTABLE`: Your own Python with pyannote.audio, to use for speaker diarisation instead of uv (default: uv)
-- `HF_TOKEN`: HuggingFace token for speaker diarisation (default: the token stored by `npm run setup:token`)
+- `HF_TOKEN`: HuggingFace token for speaker diarisation (default: the token stored by `inside-voice-mcp setup-token`)
 
 ## 🛠️ Available Tools
 
@@ -233,7 +236,7 @@ The regular models. Models ending in `.en` only understand English, and the othe
 For the most accurate transcripts, use the advanced model `large-v3-turbo-q8_0`:
 
 ```bash
-npm run models -- install large-v3-turbo-q8_0
+inside-voice-mcp models install large-v3-turbo-q8_0
 ```
 
 On a 10-minute recording on an M3 Mac, it took 68 seconds, against 139 seconds for `large-v3`, and used 1.4 GB of memory, against 4.4 GB. Its accuracy was close to `large-v3-turbo`. `base.en` remains the default, because it is about three times faster again, but it makes more mistakes.
@@ -244,6 +247,7 @@ Quantised models use less memory, but on Apple Silicon they are not faster than 
 
 ```
 ├── src/                    # JavaScript source code, run directly
+│   ├── cli.js             # The inside-voice-mcp command
 │   ├── index.js           # Server entry point
 │   ├── http-server.js     # Serves the server over HTTP on localhost
 │   ├── models.js          # The model list, and installing and deleting models
@@ -289,7 +293,7 @@ brew install whisper-cpp
 which whisper-cli
 ```
 
-**No models found:** run `npm run models -- install base.en`. The `health_check` tool shows which directory the server is looking in.
+**No models found:** run `inside-voice-mcp models install base.en`. The `health_check` tool shows which directory the server is looking in.
 
 **Performance issues:**
 - Use 4 threads on Apple Silicon for optimal performance

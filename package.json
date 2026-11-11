@@ -3,6 +3,9 @@
   "version": "2.0.0",
   "description": "whisper.cpp MCP server for local speech-to-text transcription",
   "main": "src/index.js",
+  "bin": {
+    "inside-voice-mcp": "src/cli.js"
+  },
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
@@ -14,9 +17,9 @@
     "lint:fix": "oxlint src test scripts --fix",
     "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\"",
-    "setup:diarization": "node scripts/setup-diarization.js",
-    "setup:token": "node scripts/setup-huggingface-auth.js",
-    "models": "node scripts/model-manager.js",
+    "setup:diarization": "node src/cli.js setup-diarization",
+    "setup:token": "node src/cli.js setup-token",
+    "models": "node src/cli.js models",
     "build:mcpb": "node scripts/build-mcpb.js"
   },
   "engines": {

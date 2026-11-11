@@ -31,7 +31,7 @@ function chooseVadModel(vadOption) {
 
   if (vadOption === true && !installed) {
     throw new Error(
-      'The VAD model is not installed. Install it with: npm run models -- install vad',
+      'The VAD model is not installed. Install it with: inside-voice-mcp models install vad',
     );
   }
 
@@ -57,7 +57,7 @@ export async function transcribe(audioPath, options) {
   if (!existsSync(modelPath)) {
     throw new Error(
       `Model '${options.model}' is not installed in ${getModelsDir()}. ` +
-        `Install it with: npm run models -- install ${options.model}`,
+        `Install it with: inside-voice-mcp models install ${options.model}`,
     );
   }
 

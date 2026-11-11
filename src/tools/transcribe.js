@@ -30,7 +30,7 @@ const HELP_TEXT = {
     '',
     'Setup Help:',
     '- Follow the Speaker Diarization Setup section of the README',
-    '- Store your HuggingFace token for Pyannote models: npm run setup:token',
+    '- Store your HuggingFace token for Pyannote models: inside-voice-mcp setup-token',
   ].join('\n'),
   PROCESSING_ERROR: [
     '',

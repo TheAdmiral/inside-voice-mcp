@@ -191,7 +191,7 @@ test('a model that is not installed says how to install it', async (t) => {
 
   await assert.rejects(
     transcribe(audioPath, options({ model: 'small.en' })),
-    /not installed.*npm run models -- install small\.en/,
+    /not installed.*inside-voice-mcp models install small\.en/,
   );
 });
 
@@ -340,6 +340,6 @@ test('vad true without the VAD model says how to install it', async (t) => {
 
   await assert.rejects(
     transcribe(audioPath, options({ model: 'tiny.en', vad: true })),
-    /VAD model is not installed.*npm run models -- install vad/,
+    /VAD model is not installed.*inside-voice-mcp models install vad/,
   );
 });

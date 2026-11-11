@@ -81,7 +81,9 @@ function generateDiagnostics(result, installationError, tokenProblem) {
       diagnostics.overall_status = 'warning';
     }
     diagnostics.issues.push('No whisper models found');
-    diagnostics.recommendations.push(`Install a model: npm run models -- install ${DEFAULT_MODEL}`);
+    diagnostics.recommendations.push(
+      `Install a model: inside-voice-mcp models install ${DEFAULT_MODEL}`,
+    );
   }
 
   // Check the HuggingFace token, which only speaker diarization needs
@@ -92,14 +94,14 @@ function generateDiagnostics(result, installationError, tokenProblem) {
     diagnostics.issues.push(tokenProblem);
   } else if (!result.huggingface_token_source) {
     diagnostics.recommendations.push(
-      'For speaker diarization, store a HuggingFace token: npm run setup:token',
+      'For speaker diarization, store a HuggingFace token: inside-voice-mcp setup-token',
     );
   }
 
   if (!result.vad_model_installed) {
     diagnostics.recommendations.push(
       'To skip silence, which is faster and more accurate, install the VAD model: ' +
-        'npm run models -- install vad',
+        'inside-voice-mcp models install vad',
     );
   }
 

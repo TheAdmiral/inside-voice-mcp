@@ -315,22 +315,25 @@ const COMMANDS = {
   help: () => console.log(USAGE),
 };
 
-const [commandName = 'list', ...modelArgs] = process.argv.slice(2);
+/** Runs a model manager command, such as: install tiny.en small */
+export async function run(args) {
+  const [commandName = 'list', ...modelArgs] = args;
 
-// Names can be separated by commas as well as spaces, as in: install tiny.en, small
-const modelNames = modelArgs.flatMap((arg) => arg.split(',')).filter(Boolean);
-const command = COMMANDS[commandName];
+  // Names can be separated by commas as well as spaces, as in: install tiny.en, small
+  const modelNames = modelArgs.flatMap((arg) => arg.split(',')).filter(Boolean);
+  const command = COMMANDS[commandName];
 
-try {
-  if (!command) {
-    throw new Error(`Unknown command: ${commandName}\n\n${USAGE}`);
+  try {
+    if (!command) {
+      throw new Error(`Unknown command: ${commandName}\n\n${USAGE}`);
+    }
+
+    await command(modelNames);
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  } finally {
+    // An open reader keeps the process waiting for input.
+    reader?.close();
   }
-
-  await command(modelNames);
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
-} finally {
-  // An open reader keeps the process waiting for input.
-  reader?.close();
 }

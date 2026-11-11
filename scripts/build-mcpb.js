@@ -34,7 +34,7 @@ const manifest = {
     'Transcribes audio files on your Mac with whisper.cpp. Nothing is sent to the cloud.\n\n' +
     'This extension starts the Inside Voice server installed by Homebrew. Install that first:\n\n' +
     '    brew install TheAdmiral/tap/inside-voice\n' +
-    '    inside-voice-models install base.en',
+    '    inside-voice-mcp models install base.en',
   author: { name: 'TheAdmiral', url: 'https://github.com/TheAdmiral' },
   repository: { type: 'git', url: repositoryUrl },
   homepage: repositoryUrl,
