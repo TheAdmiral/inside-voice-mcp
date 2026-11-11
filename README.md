@@ -157,7 +157,7 @@ Some MCP clients connect to a URL instead of starting the server themselves. For
 
 ```bash
 inside-voice-mcp --http              # http://127.0.0.1:3700/mcp
-inside-voice-mcp --port 4000         # http://127.0.0.1:4000/mcp
+inside-voice-mcp --http --port 4000  # http://127.0.0.1:4000/mcp
 ```
 
 With Homebrew, run `brew services start inside-voice` to keep it running in the background and start it when you log in.

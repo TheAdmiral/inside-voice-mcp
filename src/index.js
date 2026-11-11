@@ -83,15 +83,20 @@ function readOptions(args) {
     },
   });
 
-  // Giving a port implies serving over HTTP.
-  const useHttp = values.http || values.port !== undefined;
+  // The port is only for HTTP, so on its own it is a mistake rather than a request for HTTP.
+  if (values.port !== undefined && !values.http) {
+    throw new Error(
+      `--port only works with --http, as in: inside-voice-mcp --http --port ${values.port}`,
+    );
+  }
+
   const port = values.port === undefined ? DEFAULT_HTTP_PORT : Number(values.port);
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`--port must be a whole number from 1 to 65535, not "${values.port}"`);
   }
 
-  return { useHttp, port };
+  return { useHttp: values.http, port };
 }
 
 async function runOverStdio() {
@@ -106,13 +111,13 @@ async function runOverHttp(port) {
     console.error(`Inside Voice MCP server running at ${httpServerUrl(httpServer)}`);
   } catch (error) {
     if (error.code === 'EADDRINUSE') {
-      throw new Error(`Port ${port} is already in use. Choose another with --port <number>`);
+      throw new Error(`Port ${port} is already in use. Choose another with --http --port <number>`);
     }
     throw error;
   }
 }
 
-/** Starts the server, over stdio or, with --http or --port, over HTTP on localhost. */
+/** Starts the server, over stdio or, with --http, over HTTP on localhost. */
 export async function startServer(args) {
   const { useHttp, port } = readOptions(args);
 

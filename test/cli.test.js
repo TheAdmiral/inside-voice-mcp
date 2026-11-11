@@ -30,6 +30,20 @@ test('rejects an unknown command', () => {
   assert.match(result.stderr, /Unknown command: no-such-command/);
 });
 
+test('--port without --http is an error', () => {
+  const result = runCli(['--port', '4000']);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--port only works with --http/);
+});
+
+test('--port must be a valid port number', () => {
+  const result = runCli(['--http', '--port', '0']);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--port must be a whole number from 1 to 65535/);
+});
+
 test('starts the MCP server when there is no command', async () => {
   const client = new Client({ name: 'cli-test', version: '0.0.0' });
   await client.connect(
