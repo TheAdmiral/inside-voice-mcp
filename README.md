@@ -5,13 +5,13 @@
 >
 > I am actively fixing it. Please do not rely on it until this warning is removed.
 
-Inside Voice is a high-performance Model Context Protocol (MCP) server providing local speech-to-text transcription using whisper.cpp, optimized for Apple Silicon.
+Inside Voice is a high-performance Model Context Protocol (MCP) server providing local speech-to-text transcription using whisper.cpp, optimised for Apple Silicon.
 
 ## 🎯 Features
 
 - **🏠 100% Local Processing**: No cloud APIs, complete privacy
-- **🚀 Apple Silicon Optimized**: 15x+ real-time transcription speed
-- **🎤 Speaker Diarization**: Identify and separate multiple speakers
+- **🚀 Apple Silicon Optimised**: 15x+ real-time transcription speed
+- **🎤 Speaker Diarisation**: Identify and separate multiple speakers
 - **🎵 Universal Audio Support**: Automatic conversion from MP3, M4A, FLAC, and more
 - **📝 Multiple Output Formats**: txt, json, vtt, srt, csv
 - **💾 Low Memory Footprint**: <2GB memory usage
@@ -23,14 +23,14 @@ Inside Voice is a high-performance Model Context Protocol (MCP) server providing
 
 - Node.js 24.2+
 - whisper.cpp (`brew install whisper-cpp`)
-- **For audio format conversion**: ffmpeg (`brew install ffmpeg`) - automatically handles MP3, M4A, FLAC, OGG, etc.
-- **For speaker diarization**: uv (`brew install uv`) and a HuggingFace token (free). uv fetches Python and the packages itself
+- **For audio format conversion**: ffmpeg (`brew install ffmpeg`) – automatically handles MP3, M4A, FLAC, OGG, etc.
+- **For speaker diarisation**: uv (`brew install uv`) and a HuggingFace token (free). uv fetches Python and the packages itself
 
 ### Supported Audio Formats
 
 - **Native whisper.cpp formats**: WAV, FLAC
 - **Auto-converted formats**: MP3, M4A, AAC, OGG, WMA, and more
-- **Automatic conversion**: Powered by ffmpeg with 16kHz/mono optimization for whisper.cpp
+- **Automatic conversion**: Powered by ffmpeg with 16kHz/mono optimisation for whisper.cpp
 - **Format detection**: Automatic format detection and conversion when needed
 
 ### Installation
@@ -59,9 +59,9 @@ npm run models -- delete small          # Or name them
 
 **Regular models** are the standard whisper models, listed in the [model comparison](#model-comparison). **Advanced models** are quantised versions of them, such as `base.en-q5_1`. They are smaller and faster, but slightly less accurate. Both kinds come from the [whisper.cpp repository on Hugging Face](https://huggingface.co/ggerganov/whisper.cpp), and both work with the `transcribe` tool once installed.
 
-### Speaker Diarization Setup (Optional)
+### Speaker Diarisation Setup (Optional)
 
-Basic transcription works without any of this. Only speaker diarization needs it.
+Basic transcription works without any of this. Only speaker diarisation needs it.
 
 1. Install uv, then download Python and the packages (about 1.5 GB):
    ```bash
@@ -72,7 +72,7 @@ Basic transcription works without any of this. Only speaker diarization needs it
 2. Get a free HuggingFace token:
    - Create an account at [huggingface.co](https://huggingface.co)
    - Generate a token at [Settings > Access Tokens](https://huggingface.co/settings/tokens)
-   - Accept the licenses for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) and [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+   - Accept the licences for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) and [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
    - Store the token. You only need to do this once:
      ```bash
      npm run setup:token
@@ -147,14 +147,14 @@ The server only accepts connections from your own computer, because its tools ca
 ### Environment Variables
 
 - `WHISPER_MODELS_PATH`: Absolute path to your whisper models (default: `~/.inside-voice-mcp/models`)
-- `PYTHON_EXECUTABLE`: Your own Python with pyannote.audio, to use for speaker diarization instead of uv (default: uv)
-- `HF_TOKEN`: HuggingFace token for speaker diarization (default: the token stored by `npm run setup:token`)
+- `PYTHON_EXECUTABLE`: Your own Python with pyannote.audio, to use for speaker diarisation instead of uv (default: uv)
+- `HF_TOKEN`: HuggingFace token for speaker diarisation (default: the token stored by `npm run setup:token`)
 
 ## 🛠️ Available Tools
 
 | Tool | Description |
 |------|-------------|
-| `transcribe` | Audio transcription of any length, with automatic format conversion and optional speaker diarization |
+| `transcribe` | Audio transcription of any length, with automatic format conversion and optional speaker diarisation |
 | `list_models` | Show installed whisper models with their sizes, and the regular models not yet installed |
 | `health_check` | System diagnostics |
 | `version` | Server version information |
@@ -165,12 +165,12 @@ The server only accepts connections from your own computer, because its tools ca
 - `options` (object, optional):
   - `model` (string): Model to use, regular or advanced, which must be installed (default: 'base.en')
   - `language` (string): Language code (default: 'auto')
-  - `output_format` (string): Output format - txt, vtt, srt, json, csv (default: 'txt')
-  - `temperature` (number): Sampling temperature 0-1 (default: 0)
+  - `output_format` (string): Output format – txt, vtt, srt, json, csv (default: 'txt')
+  - `temperature` (number): Sampling temperature 0–1 (default: 0)
   - `threads` (number): CPU threads to use (default: 4)
   - `translate` (boolean): Translate to English (default: false)
   - `word_timestamps` (boolean): Add a `words` array with each word's start and end time to every segment in `metadata.segments` (default: false). Times are approximate, and languages written without spaces get one word per segment.
-  - `diarize` (boolean): Identify who is speaking in each segment, which needs the [diarization setup](#speaker-diarization-setup-optional) (default: false)
+  - `diarize` (boolean): Identify who is speaking in each segment, which needs the [diarisation setup](#speaker-diarisation-setup-optional) (default: false)
   - `min_speakers` (number): Fewest speakers to look for (default: 1)
   - `max_speakers` (number): Most speakers to look for (default: 10)
   - `use_mps` (boolean): Use MPS acceleration on Apple Silicon when identifying speakers (default: true)
@@ -216,9 +216,9 @@ The regular models. Models ending in `.en` only understand English, and the othe
 │   ├── schemas.js         # Zod schemas for tool options
 │   ├── tools/             # MCP tool implementations
 │   ├── whisper.js         # whisper.cpp integration
-│   └── utils/             # Speaker diarization & utilities
+│   └── utils/             # Speaker diarisation & utilities
 ├── packaging/             # Homebrew formula and the Claude Desktop extension launcher
-├── python/                # Diarization script and Python dependencies
+├── python/                # Diarisation script and Python dependencies
 ├── scripts/               # Model manager, setup, extension build and manual smoke test
 └── test/                  # Tests (node --test)
     └── fixtures/          # Sample audio
@@ -243,7 +243,7 @@ npm run format
 # Try the server with MCP Inspector
 npx @modelcontextprotocol/inspector@latest node src/index.js
 
-# End-to-end diarization check (needs the diarization setup and the base.en model)
+# End-to-end diarisation check (needs the diarisation setup and the base.en model)
 node scripts/smoke-diarization.js
 ```
 
@@ -273,14 +273,14 @@ npm run lint
 npm test
 ```
 
-## 📄 License
+## 📄 Licence
 
-MIT License - see LICENSE file for details.
+MIT License – see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## 🙏 Acknowledgements
 
 - [SmartLittleApps](https://github.com/SmartLittleApps) for [local-stt-mcp](https://github.com/SmartLittleApps/local-stt-mcp), the original project this is forked from
-- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for optimized inference
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for optimised inference
 - [OpenAI Whisper](https://github.com/openai/whisper) for the original models
 - [Model Context Protocol](https://modelcontextprotocol.io/) for the framework
-- [Pyannote.audio](https://github.com/pyannote/pyannote-audio) for speaker diarization
+- [Pyannote.audio](https://github.com/pyannote/pyannote-audio) for speaker diarisation

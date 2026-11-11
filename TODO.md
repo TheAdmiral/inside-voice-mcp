@@ -10,6 +10,6 @@
 - [ ] Transcription web UI
 - [ ] Install as a binary
 - [ ] Further macOS optimisation
-- [ ] British English READMEs
-- [ ] More model options and descriptions
+- [x] British English READMEs
+- [x] More model options and descriptions
 - [x] Model manager
