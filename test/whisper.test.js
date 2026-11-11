@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   chmodSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -32,6 +33,13 @@ test('builds the default arguments', () => {
     '--output-json',
     '--no-prints',
   ]);
+});
+
+test('adds the VAD flags when given a VAD model', () => {
+  const args = buildWhisperArgs('a.wav', 'm.bin', 'out', options(), 'vad.bin');
+
+  assert.deepEqual(args.slice(-4), ['--vad', '--vad-model', 'vad.bin', '--no-prints']);
+  assert.ok(!buildWhisperArgs('a.wav', 'm.bin', 'out', options()).includes('--vad'));
 });
 
 test('asks for the JSON file only once when JSON is the chosen format', () => {
@@ -292,4 +300,46 @@ test('segments have no words key without tokens', () => {
   });
 
   assert.equal('words' in segments[0], false);
+});
+
+/** Installs a stand-in VAD model in the fake models directory. */
+function installFakeVadModel() {
+  const vadDir = join(process.env.WHISPER_MODELS_PATH, 'vad');
+  mkdirSync(vadDir);
+  writeFileSync(join(vadDir, 'ggml-silero-v6.2.0.bin'), '');
+}
+
+test('uses VAD when the VAD model is installed', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+  installFakeVadModel();
+
+  const result = await transcribe(audioPath, options({ model: 'tiny.en' }));
+
+  assert.equal(result.vad_used, true);
+});
+
+test('skips VAD when the VAD model is not installed', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+
+  const result = await transcribe(audioPath, options({ model: 'tiny.en' }));
+
+  assert.equal(result.vad_used, false);
+});
+
+test('vad false turns VAD off even when it is installed', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+  installFakeVadModel();
+
+  const result = await transcribe(audioPath, options({ model: 'tiny.en', vad: false }));
+
+  assert.equal(result.vad_used, false);
+});
+
+test('vad true without the VAD model says how to install it', async (t) => {
+  const { audioPath } = setUpFakeWhisper(t);
+
+  await assert.rejects(
+    transcribe(audioPath, options({ model: 'tiny.en', vad: true })),
+    /VAD model is not installed.*npm run models -- install vad/,
+  );
 });

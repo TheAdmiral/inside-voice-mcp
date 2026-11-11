@@ -1,7 +1,7 @@
 import { createWriteStream, existsSync, readdirSync, statSync } from 'node:fs';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
@@ -11,6 +11,13 @@ const DOWNLOAD_BASE_URL = `https://huggingface.co/${REPOSITORY}/resolve/main`;
 const FILE_LIST_URL = `https://huggingface.co/api/models/${REPOSITORY}/tree/main`;
 
 export const DEFAULT_MODEL = 'base.en';
+
+// The Silero voice activity detection (VAD) model lets whisper skip the parts without speech.
+// It is not a whisper model, so it lives in its own directory and is not listed with them.
+const VAD_MODEL_URL =
+  'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin';
+export const VAD_MODEL_NAME = 'vad';
+export const VAD_MODEL_SIZE_BYTES = 885_098;
 
 /**
  * The regular models, which are the standard whisper models, from smallest to largest.
@@ -176,6 +183,14 @@ export function getModelPath(name) {
   return join(getModelsDir(), modelFileName(name));
 }
 
+export function getVadModelPath() {
+  return join(getModelsDir(), 'vad', 'ggml-silero-v6.2.0.bin');
+}
+
+export function isVadModelInstalled() {
+  return existsSync(getVadModelPath());
+}
+
 /** Where a model sorts: regular models by size, then advanced models after the one they came from. */
 function sortPosition(name) {
   const regularIndex = REGULAR_MODEL_NAMES.indexOf(name);
@@ -269,16 +284,14 @@ export async function fetchOnlineModels() {
 }
 
 /**
- * Downloads a model into the models directory, replacing any installed copy.
+ * Downloads a file to `destinationPath`, replacing any file already there.
  * `onProgress` is called with the bytes received so far and the total, which is null when
  * the server does not say.
  */
-export async function installModel(name, onProgress = () => {}) {
-  const modelPath = getModelPath(name);
-
-  const response = await fetch(`${DOWNLOAD_BASE_URL}/${modelFileName(name)}`);
+async function downloadFile(url, destinationPath, description, onProgress) {
+  const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Could not download ${name}: HTTP ${response.status}`);
+    throw new Error(`Could not download ${description}: HTTP ${response.status}`);
   }
 
   const totalBytes = Number(response.headers.get('content-length')) || null;
@@ -291,21 +304,32 @@ export async function installModel(name, onProgress = () => {}) {
     },
   });
 
-  await mkdir(getModelsDir(), { recursive: true });
+  await mkdir(dirname(destinationPath), { recursive: true });
 
-  // Download to a side file so an interrupted download never leaves a partial model behind.
-  const partialPath = `${modelPath}.part`;
+  // Download to a side file so an interrupted download never leaves a partial file behind.
+  const partialPath = `${destinationPath}.part`;
   try {
     await pipeline(
       Readable.fromWeb(response.body),
       progressCounter,
       createWriteStream(partialPath),
     );
-    await rename(partialPath, modelPath);
+    await rename(partialPath, destinationPath);
   } catch (error) {
     await rm(partialPath, { force: true });
     throw error;
   }
+}
+
+/** Downloads a whisper model into the models directory, replacing any installed copy. */
+export async function installModel(name, onProgress = () => {}) {
+  const url = `${DOWNLOAD_BASE_URL}/${modelFileName(name)}`;
+  await downloadFile(url, getModelPath(name), name, onProgress);
+}
+
+/** Downloads the VAD model, replacing any installed copy. */
+export async function installVadModel(onProgress = () => {}) {
+  await downloadFile(VAD_MODEL_URL, getVadModelPath(), 'the VAD model', onProgress);
 }
 
 export async function deleteModel(name) {
@@ -315,6 +339,14 @@ export async function deleteModel(name) {
   }
 
   await rm(modelPath);
+}
+
+export async function deleteVadModel() {
+  if (!isVadModelInstalled()) {
+    throw new Error('The VAD model is not installed');
+  }
+
+  await rm(getVadModelPath());
 }
 
 /** Formats a size in bytes the way macOS Finder and Hugging Face do, such as 148 MB. */

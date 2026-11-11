@@ -1,7 +1,7 @@
 import { arch, cpus, platform } from 'node:os';
 import { z } from 'zod';
 import { checkInstallation } from '../whisper.js';
-import { DEFAULT_MODEL, getInstalledModels, getModelsDir } from '../models.js';
+import { DEFAULT_MODEL, getInstalledModels, getModelsDir, isVadModelInstalled } from '../models.js';
 import { findHuggingFaceToken } from '../utils/huggingface-auth.js';
 import { jsonResult } from './tool-result.js';
 
@@ -18,6 +18,7 @@ async function handler() {
       models_directory: getModelsDir(),
       models_available: availableModels,
       recommended_model: determineRecommendedModel(availableModels),
+      vad_model_installed: isVadModelInstalled(),
       huggingface_token_source: tokenSource,
       system_info: {
         platform: platform(),
@@ -92,6 +93,13 @@ function generateDiagnostics(result, installationError, tokenProblem) {
   } else if (!result.huggingface_token_source) {
     diagnostics.recommendations.push(
       'For speaker diarization, store a HuggingFace token: npm run setup:token',
+    );
+  }
+
+  if (!result.vad_model_installed) {
+    diagnostics.recommendations.push(
+      'To skip silence, which is faster and more accurate, install the VAD model: ' +
+        'npm run models -- install vad',
     );
   }
 

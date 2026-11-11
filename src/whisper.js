@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { getModelPath, getModelsDir } from './models.js';
+import { getModelPath, getModelsDir, getVadModelPath, isVadModelInstalled } from './models.js';
 import { runCommand } from './utils/run-command.js';
 
 const WHISPER_BINARY = 'whisper-cli';
@@ -19,8 +19,28 @@ const OUTPUT_FORMAT_FLAGS = {
  * @typedef {{ start: number, end: number, text: string }} Word
  * @typedef {{ start: number, end: number, text: string, words?: Word[] }} Segment
  * @typedef {{ text: string, segments?: Segment[], language?: string, model_used: string,
- *   processing_time: number }} TranscriptionResult
+ *   vad_used: boolean, processing_time: number }} TranscriptionResult
  */
+
+/**
+ * Returns the VAD model to use, or null to transcribe without one.
+ * `vadOption` is the vad option: true, false, or undefined to use VAD if it is installed.
+ */
+function chooseVadModel(vadOption) {
+  const installed = isVadModelInstalled();
+
+  if (vadOption === true && !installed) {
+    throw new Error(
+      'The VAD model is not installed. Install it with: npm run models -- install vad',
+    );
+  }
+
+  if (vadOption === false || !installed) {
+    return null;
+  }
+
+  return getVadModelPath();
+}
 
 /**
  * `options` are validated options, see TranscribeOptionsSchema in schemas.js.
@@ -41,12 +61,14 @@ export async function transcribe(audioPath, options) {
     );
   }
 
+  const vadModelPath = chooseVadModel(options.vad);
+
   // whisper-cli writes its output files to disk, so keep them away from the user's audio.
   const outputDir = await mkdtemp(join(tmpdir(), 'inside-voice-whisper-'));
   const outputBase = join(outputDir, 'output');
 
   try {
-    const args = buildWhisperArgs(audioPath, modelPath, outputBase, options);
+    const args = buildWhisperArgs(audioPath, modelPath, outputBase, options, vadModelPath);
     console.error(`[Whisper] Executing: ${WHISPER_BINARY} ${args.join(' ')}`);
 
     const result = await runCommand(WHISPER_BINARY, args);
@@ -59,6 +81,7 @@ export async function transcribe(audioPath, options) {
     return {
       ...output,
       model_used: options.model,
+      vad_used: vadModelPath !== null,
       processing_time: Date.now() - startTime,
     };
   } finally {
@@ -82,8 +105,9 @@ export async function checkInstallation() {
 /**
  * `outputBase` is the output file path without its extension.
  * `options` are validated options, see TranscribeOptionsSchema in schemas.js.
+ * `vadModelPath` is the VAD model to skip silence with, or null to transcribe everything.
  */
-export function buildWhisperArgs(audioPath, modelPath, outputBase, options) {
+export function buildWhisperArgs(audioPath, modelPath, outputBase, options, vadModelPath = null) {
   const args = [
     '--model',
     modelPath,
@@ -123,6 +147,11 @@ export function buildWhisperArgs(audioPath, modelPath, outputBase, options) {
 
   if (options.split_on_word) {
     args.push('--split-on-word');
+  }
+
+  // whisper.cpp still gives times from the start of the original audio when it skips silence.
+  if (vadModelPath) {
+    args.push('--vad', '--vad-model', vadModelPath);
   }
 
   args.push('--no-prints');

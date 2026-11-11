@@ -10,8 +10,11 @@ import {
   getInstalledModels,
   getModelPath,
   getModelsDir,
+  getVadModelPath,
   installModel,
+  installVadModel,
   isRegularModel,
+  isVadModelInstalled,
   modelsFromRepositoryFiles,
 } from '../src/models.js';
 
@@ -156,4 +159,21 @@ test('deleting a model that is not installed fails', async (t) => {
 test('sizes are shown in decimal units', () => {
   assert.equal(formatSize(77704715), '78 MB');
   assert.equal(formatSize(3095033483), '3.1 GB');
+});
+
+test('the VAD model installs into its own directory and is not listed as a whisper model', async (t) => {
+  useTemporaryModelsDir(t);
+  let requestedUrl;
+  fakeFetch(t, (url) => {
+    requestedUrl = url;
+    return new Response('vad model');
+  });
+
+  assert.equal(isVadModelInstalled(), false);
+  await installVadModel();
+
+  assert.match(requestedUrl, /ggml-org\/whisper-vad\/resolve\/main\/ggml-silero-v6\.2\.0\.bin$/);
+  assert.equal(isVadModelInstalled(), true);
+  assert.equal(readFileSync(getVadModelPath(), 'utf-8'), 'vad model');
+  assert.deepEqual(getInstalledModels(), []);
 });

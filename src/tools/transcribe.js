@@ -58,6 +58,7 @@ async function transcribeWithoutSpeakers(audioPath, options) {
     metadata: {
       model_used: result.model_used,
       language: result.language,
+      vad_used: result.vad_used,
       processing_time: result.processing_time,
       segments: result.segments,
     },
@@ -86,6 +87,7 @@ async function transcribeWithSpeakers(audioPath, options, python) {
     metadata: {
       model_used: transcription.model_used,
       language: transcription.language,
+      vad_used: transcription.vad_used,
       processing_time: Date.now() - startTime,
       segments: includeSegments ? segments : undefined,
       speakers: [...new Set(segments.map((segment) => segment.speaker))],

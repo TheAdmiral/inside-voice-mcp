@@ -1,13 +1,18 @@
 import { createInterface } from 'node:readline';
 import {
   deleteModel,
+  deleteVadModel,
   describeModel,
   fetchOnlineModels,
   formatSize,
   getInstalledModels,
   getModelsDir,
   installModel,
+  installVadModel,
   isRegularModel,
+  isVadModelInstalled,
+  VAD_MODEL_NAME,
+  VAD_MODEL_SIZE_BYTES,
 } from '../src/models.js';
 
 const USAGE = `Manage the whisper models Inside Voice uses.
@@ -20,7 +25,11 @@ Commands:
   help                 Show this help
 
 Regular models are the standard whisper models. Advanced models are quantised versions of
-them, which are smaller and faster but slightly less accurate.`;
+them, which are smaller and faster but slightly less accurate.
+
+The VAD model, called ${VAD_MODEL_NAME}, lets whisper skip the parts without speech, which is
+faster and avoids made-up text in silences. It is installed along with any whisper model,
+or on its own with: install ${VAD_MODEL_NAME}`;
 
 // One reader is shared by every question, because a reader takes all the input available,
 // which can include answers to later questions when they are piped in.
@@ -77,6 +86,15 @@ function printModels(models, { numbered = false, installedNames = [] } = {}) {
   }
 }
 
+function printVadModel() {
+  const status = isVadModelInstalled() ? 'installed' : `install it with: install ${VAD_MODEL_NAME}`;
+
+  console.log('\nVoice activity detection');
+  console.log(
+    `  ${VAD_MODEL_NAME}  ${formatSize(VAD_MODEL_SIZE_BYTES)}  Lets whisper skip silence, ${status}`,
+  );
+}
+
 /** Asks for numbers from a printed list, and returns the models they stand for. */
 async function chooseModels(models, action) {
   const answer = await ask(
@@ -116,13 +134,13 @@ function showInstalled() {
 
   if (installed.length === 0) {
     console.log('\nNo models are installed. Run the install command to choose some.');
-    return;
+  } else {
+    printModels(installed);
+    const totalBytes = installed.reduce((total, model) => total + model.size_bytes, 0);
+    console.log(`\nTotal: ${formatSize(totalBytes)}`);
   }
 
-  printModels(installed);
-
-  const totalBytes = installed.reduce((total, model) => total + model.size_bytes, 0);
-  console.log(`\nTotal: ${formatSize(totalBytes)}`);
+  printVadModel();
 }
 
 async function showAvailable() {
@@ -131,6 +149,7 @@ async function showAvailable() {
 
   console.log('Models you can install from Hugging Face');
   printModels(online, { installedNames });
+  printVadModel();
 }
 
 async function downloadWithProgress(model) {
@@ -163,7 +182,53 @@ async function downloadWithProgress(model) {
   console.log(`Installed ${model.name}`);
 }
 
+async function installVad() {
+  if (isVadModelInstalled()) {
+    console.log(`${VAD_MODEL_NAME} is already installed`);
+    return;
+  }
+
+  console.log(`Downloading ${VAD_MODEL_NAME} (${formatSize(VAD_MODEL_SIZE_BYTES)})`);
+  await installVadModel();
+  console.log(`Installed ${VAD_MODEL_NAME}`);
+}
+
+async function deleteVad() {
+  if (!isVadModelInstalled()) {
+    console.log(`${VAD_MODEL_NAME} is not installed`);
+    return;
+  }
+
+  const answer = await ask(`Delete ${VAD_MODEL_NAME}? Type y to confirm: `);
+  if (answer.trim().toLowerCase() !== 'y') {
+    console.log(`${VAD_MODEL_NAME} was not deleted.`);
+    return;
+  }
+
+  await deleteVadModel();
+  console.log(`Deleted ${VAD_MODEL_NAME}`);
+}
+
+/** Removes the VAD model's name from `names`, and says whether it was there. */
+function takeVadName(names) {
+  const index = names.indexOf(VAD_MODEL_NAME);
+  if (index === -1) {
+    return false;
+  }
+
+  names.splice(index, 1);
+  return true;
+}
+
 async function installModels(names) {
+  // The VAD model is not a whisper model, so it is installed on its own.
+  if (takeVadName(names)) {
+    await installVad();
+    if (names.length === 0) {
+      return;
+    }
+  }
+
   const online = await fetchOnlineModels();
   const installedNames = getInstalledModels().map((model) => model.name);
 
@@ -192,9 +257,22 @@ async function installModels(names) {
       await downloadWithProgress(model);
     }
   }
+
+  // The VAD model is under 1 MB and makes every transcription better, so it comes along.
+  if (!isVadModelInstalled()) {
+    console.log('Also installing the VAD model, which lets whisper skip silence');
+    await installVad();
+  }
 }
 
 async function deleteModels(names) {
+  if (takeVadName(names)) {
+    await deleteVad();
+    if (names.length === 0) {
+      return;
+    }
+  }
+
   const installed = getInstalledModels();
   if (installed.length === 0) {
     console.log(`No models are installed in ${getModelsDir()}`);
@@ -236,7 +314,10 @@ const COMMANDS = {
   help: () => console.log(USAGE),
 };
 
-const [commandName = 'list', ...modelNames] = process.argv.slice(2);
+const [commandName = 'list', ...modelArgs] = process.argv.slice(2);
+
+// Names can be separated by commas as well as spaces, as in: install tiny.en, small
+const modelNames = modelArgs.flatMap((arg) => arg.split(',')).filter(Boolean);
 const command = COMMANDS[commandName];
 
 try {

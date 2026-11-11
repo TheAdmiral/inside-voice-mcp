@@ -60,6 +60,18 @@ npm run models -- delete small          # Or name them
 
 **Regular models** are the standard whisper models, listed in the [model comparison](#model-comparison). **Advanced models** are quantised versions of them, such as `base.en-q5_1`. They are smaller and faster, but slightly less accurate. Both kinds come from the [whisper.cpp repository on Hugging Face](https://huggingface.co/ggerganov/whisper.cpp), and both work with the `transcribe` tool once installed.
 
+#### Skipping silence (recommended)
+
+The VAD (voice activity detection) model lets whisper skip the parts of a recording without speech. This is faster on recordings with pauses, gives more accurate timestamps, and stops whisper making up text in the silences. It is the [Silero VAD](https://huggingface.co/ggml-org/whisper-vad) model, which is under 1 MB.
+
+The model manager installs it along with any whisper model. If you installed your models before this, install it on its own:
+
+```bash
+npm run models -- install vad
+```
+
+Once it is installed, the `transcribe` tool uses it automatically. Set the `vad` option to `false` to transcribe without it.
+
 ### Speaker Diarisation Setup (Optional)
 
 Basic transcription works without any of this. Only speaker diarisation needs it.
@@ -177,10 +189,13 @@ The server only accepts connections from your own computer, because its tools ca
   - `threads` (number): CPU threads to use (default: 4)
   - `translate` (boolean): Translate to English (default: false)
   - `word_timestamps` (boolean): Add a `words` array with each word's start and end time to every segment in `metadata.segments` (default: false). Times are approximate, and languages written without spaces get one word per segment.
+  - `vad` (boolean): Skip the parts without speech (default: on when the [VAD model](#skipping-silence-recommended) is installed). Setting it to `true` without the VAD model installed gives an error
   - `diarize` (boolean): Identify who is speaking in each segment, which needs the [diarisation setup](#speaker-diarisation-setup-optional) (default: false)
   - `min_speakers` (number): Fewest speakers to look for (default: 1)
   - `max_speakers` (number): Most speakers to look for (default: 10)
   - `use_mps` (boolean): Use MPS acceleration on Apple Silicon when identifying speakers (default: true)
+
+`metadata.vad_used` says whether silence was skipped.
 
 With `diarize`, each format includes the speaker. The speakers found are listed in `metadata.speakers`, and each segment in `metadata.segments` has a `speaker`.
 

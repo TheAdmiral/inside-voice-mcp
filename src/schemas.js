@@ -29,6 +29,13 @@ export const TranscribeOptionsSchema = z
     word_timestamps: z.boolean().default(false),
     max_len: z.number().min(0).default(0),
     split_on_word: z.boolean().default(false),
+    vad: z
+      .boolean()
+      .optional()
+      .describe(
+        'Skip the parts without speech, which is faster and avoids made-up text in silences. ' +
+          'Used by default when the VAD model is installed',
+      ),
     diarize: z.boolean().default(false).describe('Identify who is speaking in each segment'),
     min_speakers: z.number().min(1).default(1).describe('Fewest speakers to look for'),
     max_speakers: z.number().min(1).default(10).describe('Most speakers to look for'),
