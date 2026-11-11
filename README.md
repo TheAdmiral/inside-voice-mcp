@@ -99,6 +99,28 @@ Add to your MCP client configuration:
 }
 ```
 
+#### Claude Desktop
+
+In Claude Desktop, open **Settings → Developer → Edit Config** and add the configuration above to `claude_desktop_config.json`, then restart the app.
+
+Claude Desktop starts MCP servers with a minimal `PATH`, not the one from your shell. This means it may not find `node`, or may find an older version than Node 24.2. It may also not find `whisper-cli` or `uv`. To avoid this, give the full path to `node` and set `PATH` to include the folder where Homebrew installs them:
+
+```json
+{
+  "mcpServers": {
+    "inside-voice": {
+      "command": "/opt/homebrew/bin/node",
+      "args": ["/path/to/inside-voice-mcp/src/index.js"],
+      "env": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin"
+      }
+    }
+  }
+}
+```
+
+Run `which node whisper-cli uv` in your terminal to see where they are installed on your Mac. On Intel Macs, Homebrew uses `/usr/local/bin` instead of `/opt/homebrew/bin`. Run the `health_check` tool from Claude Desktop to confirm the server can find everything.
+
 ### Environment Variables
 
 - `WHISPER_MODELS_PATH`: Absolute path to your whisper models (default: `~/.inside-voice-mcp/models`)
