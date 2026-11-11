@@ -91,10 +91,6 @@ export function checkVocabulary(vocabulary) {
 export async function transcribe(audioPath, options) {
   const startTime = Date.now();
 
-  if (!existsSync(audioPath)) {
-    throw new Error(`Audio file error: ${audioPath} - File does not exist`);
-  }
-
   const modelPath = getModelPath(options.model);
   if (!existsSync(modelPath)) {
     throw new Error(
@@ -135,9 +131,11 @@ export async function transcribe(audioPath, options) {
 
 export async function checkInstallation() {
   try {
-    const result = await runCommand(WHISPER_BINARY, ['--help']);
+    const result = await runCommand(WHISPER_BINARY, ['--version']);
     if (result.exitCode === 0) {
-      return { installed: true, version: 'whisper.cpp' };
+      // It prints a line such as: whisper.cpp version: 1.9.5
+      const version = result.stdout.match(/version:\s*(\S+)/)?.[1] ?? 'unknown';
+      return { installed: true, version };
     }
 
     return { installed: false, error: result.stderr };

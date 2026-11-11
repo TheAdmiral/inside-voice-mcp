@@ -1,7 +1,7 @@
-import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, extname, join } from 'node:path';
+import { extname, join } from 'node:path';
 import { runCommand } from './run-command.js';
 
 // afconvert comes with macOS and reads MP3, M4A, AAC, Opus, Ogg, FLAC, AIFF and more.
@@ -77,11 +77,8 @@ async function isFfmpegInstalled() {
  * Uses afconvert, and ffmpeg if it is installed and afconvert cannot read the file.
  */
 export async function convertToWav(inputPath) {
-  if (!existsSync(inputPath)) {
-    throw new Error(`Input file not found: ${inputPath}`);
-  }
-
-  const outputPath = join(tmpdir(), `${basename(inputPath, extname(inputPath))}_${Date.now()}.wav`);
+  // A random name, so that two transcriptions running at once never share a file.
+  const outputPath = join(tmpdir(), `inside-voice-${randomUUID()}.wav`);
 
   const afconvertError = await convertWithAfconvert(inputPath, outputPath);
   if (afconvertError === null) {

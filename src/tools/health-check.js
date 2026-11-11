@@ -5,37 +5,87 @@ import { DEFAULT_MODEL, getInstalledModels, getModelsDir, isVadModelInstalled } 
 import { findHuggingFaceToken } from '../utils/huggingface-auth.js';
 import { jsonResult } from './tool-result.js';
 
-async function handler() {
-  try {
-    const installation = await checkInstallation();
-    const availableModels = getInstalledModels().map((model) => model.name);
-    // Only the source and any problem are used, so the token never reaches the tool output.
-    const { source: tokenSource, problem: tokenProblem } = await findHuggingFaceToken();
+// From least to most serious.
+const STATUSES = ['healthy', 'warning', 'critical'];
 
-    const result = {
-      whisper_installed: installation.installed,
-      whisper_version: installation.version,
-      models_directory: getModelsDir(),
-      models_available: availableModels,
-      recommended_model: determineRecommendedModel(availableModels),
-      vad_model_installed: isVadModelInstalled(),
-      huggingface_token_source: tokenSource,
-      system_info: {
-        platform: platform(),
-        arch: arch(),
-        threads_available: cpus().length,
-      },
-    };
+/** Returns whichever status is more serious. */
+function moreSerious(status, otherStatus) {
+  return STATUSES.indexOf(otherStatus) > STATUSES.indexOf(status) ? otherStatus : status;
+}
 
-    return jsonResult({
-      status: installation.installed ? 'healthy' : 'needs_setup',
-      ...result,
-      diagnostics: generateDiagnostics(result, installation.error, tokenProblem),
-      installation_error: installation.error,
-    });
-  } catch (error) {
-    throw new Error(`Health check failed: ${error.message}`);
+/** The default model if it is installed, otherwise the first installed model. */
+function chooseRecommendedModel(installedNames) {
+  if (installedNames.includes(DEFAULT_MODEL) || installedNames.length === 0) {
+    return DEFAULT_MODEL;
   }
+
+  return installedNames[0];
+}
+
+async function handler() {
+  const installation = await checkInstallation();
+  const installedNames = getInstalledModels().map((model) => model.name);
+  const vadModelInstalled = isVadModelInstalled();
+  // Only the source and any problem are used, so the token never reaches the tool output.
+  const { source: tokenSource, problem: tokenProblem } = await findHuggingFaceToken();
+  const recommendedThreads = Math.min(4, cpus().length);
+
+  let status = 'healthy';
+  const issues = [];
+  const recommendations = [];
+
+  if (!installation.installed) {
+    status = moreSerious(status, 'critical');
+    issues.push('whisper.cpp not installed or not in PATH');
+    recommendations.push('Install whisper.cpp: brew install whisper-cpp');
+  }
+
+  if (installedNames.length === 0) {
+    status = moreSerious(status, 'warning');
+    issues.push('No whisper models found');
+    recommendations.push(`Install a model: inside-voice-mcp models install ${DEFAULT_MODEL}`);
+  }
+
+  // Only speaker diarization needs the HuggingFace token.
+  if (tokenProblem) {
+    status = moreSerious(status, 'warning');
+    issues.push(tokenProblem);
+  } else if (!tokenSource) {
+    recommendations.push(
+      'For speaker diarization, store a HuggingFace token: inside-voice-mcp setup-token',
+    );
+  }
+
+  if (!vadModelInstalled) {
+    recommendations.push(
+      'To skip silence, which is faster and more accurate, install the VAD model: ' +
+        'inside-voice-mcp models install vad',
+    );
+  }
+
+  recommendations.push(`Recommended thread count: ${recommendedThreads}`);
+
+  return jsonResult({
+    status,
+    whisper_installed: installation.installed,
+    whisper_version: installation.version,
+    installation_error: installation.error,
+    models_directory: getModelsDir(),
+    models_available: installedNames,
+    recommended_model: chooseRecommendedModel(installedNames),
+    vad_model_installed: vadModelInstalled,
+    huggingface_token_source: tokenSource,
+    system_info: {
+      platform: platform(),
+      arch: arch(),
+      threads_available: cpus().length,
+    },
+    diagnostics: {
+      issues,
+      recommendations,
+      recommended_threads: recommendedThreads,
+    },
+  });
 }
 
 export const healthCheckTool = {
@@ -44,74 +94,3 @@ export const healthCheckTool = {
   argsSchema: z.object({}),
   handler,
 };
-
-function determineRecommendedModel(availableModels) {
-  const priorities = ['base.en', 'tiny.en', 'small.en', 'base', 'small'];
-
-  for (const model of priorities) {
-    if (availableModels.includes(model)) {
-      return model;
-    }
-  }
-
-  return availableModels[0] ?? DEFAULT_MODEL;
-}
-
-function generateDiagnostics(result, installationError, tokenProblem) {
-  const diagnostics = {
-    overall_status: 'unknown',
-    issues: [],
-    recommendations: [],
-  };
-
-  // Check whisper installation
-  if (!result.whisper_installed) {
-    diagnostics.overall_status = 'critical';
-    diagnostics.issues.push('whisper.cpp not installed or not in PATH');
-    diagnostics.recommendations.push('Install whisper.cpp: brew install whisper-cpp');
-
-    if (installationError) {
-      diagnostics.installation_details = installationError;
-    }
-  }
-
-  // Check models
-  if (result.models_available.length === 0) {
-    if (diagnostics.overall_status !== 'critical') {
-      diagnostics.overall_status = 'warning';
-    }
-    diagnostics.issues.push('No whisper models found');
-    diagnostics.recommendations.push(
-      `Install a model: inside-voice-mcp models install ${DEFAULT_MODEL}`,
-    );
-  }
-
-  // Check the HuggingFace token, which only speaker diarization needs
-  if (tokenProblem) {
-    if (diagnostics.overall_status !== 'critical') {
-      diagnostics.overall_status = 'warning';
-    }
-    diagnostics.issues.push(tokenProblem);
-  } else if (!result.huggingface_token_source) {
-    diagnostics.recommendations.push(
-      'For speaker diarization, store a HuggingFace token: inside-voice-mcp setup-token',
-    );
-  }
-
-  if (!result.vad_model_installed) {
-    diagnostics.recommendations.push(
-      'To skip silence, which is faster and more accurate, install the VAD model: ' +
-        'inside-voice-mcp models install vad',
-    );
-  }
-
-  diagnostics.recommended_threads = Math.min(4, result.system_info.threads_available);
-  diagnostics.recommendations.push(`Recommended thread count: ${diagnostics.recommended_threads}`);
-
-  // Set overall status if no issues found
-  if (diagnostics.overall_status === 'unknown') {
-    diagnostics.overall_status = 'healthy';
-  }
-
-  return diagnostics;
-}

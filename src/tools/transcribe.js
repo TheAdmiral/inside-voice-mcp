@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
+import { extname } from 'node:path';
 import { z } from 'zod';
 import { transcribe } from '../whisper.js';
 import { prepareAudio } from '../utils/audio-converter.js';
@@ -121,7 +122,8 @@ async function handler({ audio_path, options, auto_convert }) {
       metadata: {
         ...output.metadata,
         format_converted: tempFile !== null,
-        original_format: audio_path.split('.').pop().toLowerCase(),
+        // An empty string when the file has no extension.
+        original_format: extname(audio_path).slice(1).toLowerCase(),
       },
     });
   } catch (error) {

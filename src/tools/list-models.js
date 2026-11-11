@@ -11,6 +11,16 @@ import {
 } from '../models.js';
 import { jsonResult } from './tool-result.js';
 
+/** A regular model's details, apart from its name, which the listing already gives as model. */
+function regularModelDetails(regularModel) {
+  return {
+    description: regularModel.description,
+    languages: regularModel.languages,
+    speed_rating: regularModel.speed_rating,
+    accuracy_rating: regularModel.accuracy_rating,
+  };
+}
+
 function describeInstalledModel(model) {
   const regularModel = findRegularModel(model.name);
 
@@ -20,7 +30,7 @@ function describeInstalledModel(model) {
       available: true,
       type: 'regular',
       size: formatSize(model.size_bytes),
-      ...regularModel,
+      ...regularModelDetails(regularModel),
     };
   }
 
@@ -39,7 +49,7 @@ function describeMissingModel(regularModel) {
     model: regularModel.name,
     available: false,
     type: 'regular',
-    ...regularModel,
+    ...regularModelDetails(regularModel),
     download_note: `Install with the model manager: inside-voice-mcp models install ${regularModel.name}`,
   };
 }

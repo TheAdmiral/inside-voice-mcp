@@ -19,8 +19,8 @@ export const RECOMMENDED_ACCURATE_MODEL = 'large-v3-turbo-q8_0';
 
 // The Silero voice activity detection (VAD) model lets whisper skip the parts without speech.
 // It is not a whisper model, so it lives in its own directory and is not listed with them.
-const VAD_MODEL_URL =
-  'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin';
+const VAD_MODEL_FILE_NAME = 'ggml-silero-v6.2.0.bin';
+const VAD_MODEL_URL = `https://huggingface.co/ggml-org/whisper-vad/resolve/main/${VAD_MODEL_FILE_NAME}`;
 export const VAD_MODEL_NAME = 'vad';
 export const VAD_MODEL_SIZE_BYTES = 885_098;
 
@@ -193,7 +193,7 @@ export function getModelPath(name) {
 }
 
 export function getVadModelPath() {
-  return join(getModelsDir(), 'vad', 'ggml-silero-v6.2.0.bin');
+  return join(getModelsDir(), 'vad', VAD_MODEL_FILE_NAME);
 }
 
 export function isVadModelInstalled() {

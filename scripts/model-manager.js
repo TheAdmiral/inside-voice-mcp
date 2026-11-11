@@ -90,7 +90,9 @@ function printModels(models, { numbered = false, installedNames = [] } = {}) {
 }
 
 function printVadModel() {
-  const status = isVadModelInstalled() ? 'installed' : `install it with: install ${VAD_MODEL_NAME}`;
+  const status = isVadModelInstalled()
+    ? 'installed'
+    : `install it with: inside-voice-mcp models install ${VAD_MODEL_NAME}`;
 
   console.log('\nVoice activity detection');
   console.log(

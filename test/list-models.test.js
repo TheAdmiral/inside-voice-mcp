@@ -56,3 +56,11 @@ test('recommends large-v3-turbo-q8_0 for accuracy', async (t) => {
   assert.equal(result.recommended_for_accuracy, 'large-v3-turbo-q8_0');
   assert.match(result.available_models[0].description, /recommended for accuracy/);
 });
+
+test('gives each model its name once, as model', async (t) => {
+  const result = await listModels(t, { 'ggml-tiny.en.bin': '' });
+
+  assert.equal(result.available_models[0].model, 'tiny.en');
+  assert.equal('name' in result.available_models[0], false);
+  assert.equal('name' in result.not_downloaded[0], false);
+});
