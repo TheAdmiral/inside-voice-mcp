@@ -9,7 +9,7 @@
 - [x] Run as a server on localhost:port
 - [ ] Transcription web UI
 - [ ] Install as a binary
-- [ ] Further macOS optimisation
+- [x] Further macOS optimisation
 - [x] British English READMEs
 - [x] More model options and descriptions
 - [x] Model manager
