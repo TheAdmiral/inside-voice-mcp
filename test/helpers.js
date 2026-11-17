@@ -39,6 +39,19 @@ export function restoreEnvironmentAfter(t) {
   });
 }
 
+// Stands in for each value given to a message, and is never part of a real message.
+const ANY_VALUE = '\u0000';
+
+/**
+ * Returns a pattern for the message that `makeMessage` from strings.js makes, matching any
+ * values in it. Use it when a test cannot know a value, such as another program's error.
+ */
+export function messagePattern(makeMessage) {
+  const values = Array(makeMessage.length).fill(ANY_VALUE);
+  const textAroundValues = makeMessage(...values).split(ANY_VALUE);
+  return new RegExp(`^${textAroundValues.map(RegExp.escape).join('[\\s\\S]*')}$`);
+}
+
 /** Writes a shell script that can be run as a command. */
 export function writeExecutable(path, script) {
   writeFileSync(path, script);

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import * as strings from '../src/strings.js';
 import { transcribeTool } from '../src/tools/transcribe.js';
 import { installFakeWhisper, writeExecutable } from './helpers.js';
 
@@ -126,6 +127,9 @@ test('word timestamps are kept with diarization', async (t) => {
 test('a missing audio file is reported before any tool runs', async (t) => {
   const { pythonCallsPath } = setUpFakeTools(t);
 
-  await assert.rejects(runTool('/no/such/file.wav', { diarize: true }), /Audio file not found/);
+  const notFound = strings.errors.audioFileNotFound('/no/such/file.wav');
+  await assert.rejects(runTool('/no/such/file.wav', { diarize: true }), {
+    message: strings.errors.transcriptionFailed(notFound, ''),
+  });
   assert.equal(existsSync(pythonCallsPath), false);
 });

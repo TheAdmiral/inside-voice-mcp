@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { errors, logs } from '../strings.js';
 import { findHuggingFaceToken } from './huggingface-auth.js';
 import { runCommand } from './run-command.js';
 
@@ -61,12 +62,12 @@ export async function findDiarizationPython() {
     configuredPython &&
     (await commandSucceeds(configuredPython, ['-c', 'import torch, pyannote.audio']))
   ) {
-    console.error(`[Diarization] Using Python: ${configuredPython}`);
+    console.error(logs.diarizationUsingPython(configuredPython));
     return { command: configuredPython, argsBeforeScript: [] };
   }
 
   if (await commandSucceeds('uv', ['--version'])) {
-    console.error('[Diarization] Using uv');
+    console.error(logs.diarizationUsingUv);
     return { command: 'uv', argsBeforeScript: UV_RUN_SCRIPT_ARGS };
   }
 
@@ -97,13 +98,16 @@ export async function runDiarization(python, params) {
     throw new DiarizationError('SETUP_ERROR', problem);
   }
 
-  console.error(`[Diarization] Diarizing ${audioPath}`);
+  console.error(logs.diarizationAudio(audioPath));
 
   let result;
   try {
     result = await runCommand(python.command, args, { env: buildPythonEnvironment(token) });
   } catch (error) {
-    throw new DiarizationError('PROCESSING_ERROR', `Script execution failed: ${error.message}`);
+    throw new DiarizationError(
+      'PROCESSING_ERROR',
+      errors.diarizationScriptCouldNotRun(error.message),
+    );
   }
 
   // The script reports its own errors as JSON, which explain more than its exit code does.
@@ -115,12 +119,12 @@ export async function runDiarization(python, params) {
   if (result.exitCode !== 0) {
     throw new DiarizationError(
       'PROCESSING_ERROR',
-      `Diarization script failed (exit code ${result.exitCode}): ${result.stderr || result.stdout}`,
+      errors.diarizationScriptFailed(result.exitCode, result.stderr || result.stdout),
     );
   }
 
   if (!output) {
-    throw new DiarizationError('PROCESSING_ERROR', 'The diarization script gave no valid result.');
+    throw new DiarizationError('PROCESSING_ERROR', errors.diarizationNoResult);
   }
 
   return { segments: output.segments ?? [], device: output.device };

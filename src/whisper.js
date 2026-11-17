@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getModelPath, getModelsDir, getVadModelPath, isVadModelInstalled } from './models.js';
+import { errors, logs, warnings } from './strings.js';
 import { runCommand } from './utils/run-command.js';
 
 const WHISPER_BINARY = 'whisper-cli';
@@ -37,9 +38,7 @@ function chooseVadModel(vadOption) {
   const installed = isVadModelInstalled();
 
   if (vadOption === true && !installed) {
-    throw new Error(
-      'The VAD model is not installed. Install it with: inside-voice-mcp models install vad',
-    );
+    throw new Error(errors.vadModelNeeded);
   }
 
   if (vadOption === false || !installed) {
@@ -78,10 +77,7 @@ export function checkVocabulary(vocabulary) {
     return [];
   }
 
-  return [
-    `The vocabulary may be too long. whisper reads about ${MAX_PROMPT_TOKENS} tokens of it, ` +
-      'so some terms may be ignored. Keep it to the terms this recording needs',
-  ];
+  return [warnings.vocabularyTooLong(MAX_PROMPT_TOKENS)];
 }
 
 /**
@@ -93,10 +89,7 @@ export async function transcribe(audioPath, options) {
 
   const modelPath = getModelPath(options.model);
   if (!existsSync(modelPath)) {
-    throw new Error(
-      `Model '${options.model}' is not installed in ${getModelsDir()}. ` +
-        `Install it with: inside-voice-mcp models install ${options.model}`,
-    );
+    throw new Error(errors.modelNotInstalled(options.model, getModelsDir()));
   }
 
   const vadModelPath = chooseVadModel(options.vad);
@@ -108,11 +101,11 @@ export async function transcribe(audioPath, options) {
 
   try {
     const args = buildWhisperArgs(audioPath, modelPath, outputBase, options, vadModelPath);
-    console.error(`[Whisper] Executing: ${WHISPER_BINARY} ${args.join(' ')}`);
+    console.error(logs.whisperCommand(`${WHISPER_BINARY} ${args.join(' ')}`));
 
     const result = await runCommand(WHISPER_BINARY, args);
     if (result.exitCode !== 0) {
-      throw new Error(`Whisper process failed: ${result.stderr}`);
+      throw new Error(errors.whisperFailed(result.stderr));
     }
 
     const output = await readWhisperOutput(outputBase, options);

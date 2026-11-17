@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir, platform } from 'node:os';
 import { dirname, join } from 'node:path';
+import { errors } from '../strings.js';
 import { runCommand } from './run-command.js';
 
 const KEYCHAIN_SERVICE = 'inside-voice-mcp';
@@ -51,9 +52,7 @@ async function readTokenFromConfigFile() {
 
   const { mode } = await stat(configPath);
   if ((mode & GROUP_AND_OTHER_PERMISSIONS) !== 0) {
-    throw new Error(
-      `${configPath} can be read by other users. Fix it with: chmod 600 ${configPath}`,
-    );
+    throw new Error(errors.configFileTooOpen(configPath));
   }
 
   const contents = await readFile(configPath, 'utf-8');
@@ -63,7 +62,7 @@ async function readTokenFromConfigFile() {
     config = JSON.parse(contents);
   } catch {
     // The parser's own message can quote the file, so it must not be repeated here.
-    throw new Error(`${configPath} is not valid JSON.`);
+    throw new Error(errors.configFileNotJson(configPath));
   }
 
   const token = config?.hf_token;
@@ -143,7 +142,7 @@ async function saveTokenToConfigFile(token) {
 export async function saveHuggingFaceToken(token, { useKeychain = true } = {}) {
   // This also keeps the token safe to place inside the quoted Keychain command.
   if (!/^[A-Za-z0-9_-]+$/.test(token)) {
-    throw new Error('That does not look like a HuggingFace token.');
+    throw new Error(errors.notAHuggingFaceToken);
   }
 
   if (useKeychain && (await saveTokenToKeychain(token))) {

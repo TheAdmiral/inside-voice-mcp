@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { errors, logs } from '../strings.js';
 import { runCommand } from './run-command.js';
 
 // afconvert comes with macOS and reads MP3, M4A, AAC, Opus, Ogg, FLAC, AIFF and more.
@@ -35,7 +36,7 @@ async function convertWithAfconvert(inputPath, outputPath) {
     return null;
   }
 
-  return result.stderr.trim() || `afconvert exited with code ${result.exitCode}`;
+  return result.stderr.trim() || errors.afconvertExited(result.exitCode);
 }
 
 /** Returns the error output if ffmpeg could not convert the file, or null if it did. */
@@ -60,7 +61,7 @@ async function convertWithFfmpeg(inputPath, outputPath) {
     return null;
   }
 
-  return result.stderr.trim() || `ffmpeg exited with code ${result.exitCode}`;
+  return result.stderr.trim() || errors.ffmpegExited(result.exitCode);
 }
 
 async function isFfmpegInstalled() {
@@ -89,17 +90,14 @@ export async function convertToWav(inputPath) {
   await rm(outputPath, { force: true });
 
   if (!(await isFfmpegInstalled())) {
-    throw new Error(
-      `Audio conversion failed: macOS could not read this file (${afconvertError}). ` +
-        'For other formats, install ffmpeg with: brew install ffmpeg',
-    );
+    throw new Error(errors.macOsCouldNotRead(afconvertError));
   }
 
-  console.error('[Audio] afconvert could not read the file, so trying ffmpeg');
+  console.error(logs.afconvertFallback);
   const ffmpegError = await convertWithFfmpeg(inputPath, outputPath);
   if (ffmpegError !== null) {
     await rm(outputPath, { force: true });
-    throw new Error(`Audio conversion failed: ${ffmpegError}`);
+    throw new Error(errors.conversionFailed(ffmpegError));
   }
 
   return outputPath;

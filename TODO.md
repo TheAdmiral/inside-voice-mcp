@@ -7,7 +7,7 @@
 	- Create the `TheAdmiral/homebrew-tap` repository for the formula
 	- Tag a release for the formula to download
 - [ ] Friendly setup wizard
-- [ ] I want to review and edit all the user-facing copy. Create a strings file that will be used as the source of truth for all the copy in the app.
+- [x] I want to review and edit all the user-facing copy. Create a strings file that will be used as the source of truth for all the copy in the app.
   - Add `src/strings.js`, grouped by area: tool and option descriptions, `list_models` and `health_check` text, model descriptions, error messages, and the model manager and setup script output.
   - Use a JS module rather than JSON, so that text with values in it, such as a model name, can be a small function.
   - Move every string out of `src/` and `scripts/` into it, and add a test that catches new strings written outside it. READMEs stay as they are.

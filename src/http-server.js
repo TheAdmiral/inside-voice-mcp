@@ -8,6 +8,7 @@
 
 import { createServer } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { errors, logs } from './strings.js';
 
 // The tools read and write local files, so only accept connections from this computer.
 const HOST = '127.0.0.1';
@@ -46,27 +47,27 @@ async function handleMcpRequest(createMcpServer, req, res) {
 async function handleRequest(createMcpServer, req, res) {
   const path = new URL(req.url, 'http://localhost').pathname;
   if (path !== MCP_PATH) {
-    sendJsonRpcError(res, 404, `Not found. The MCP endpoint is ${MCP_PATH}`);
+    sendJsonRpcError(res, 404, errors.notFound(MCP_PATH));
     return;
   }
 
   if (!hasLocalHost(req)) {
-    sendJsonRpcError(res, 403, `Invalid Host header: ${req.headers.host}`);
+    sendJsonRpcError(res, 403, errors.invalidHost(req.headers.host));
     return;
   }
 
   // Without sessions there is nothing to stream to (GET) or end (DELETE).
   if (req.method !== 'POST') {
-    sendJsonRpcError(res, 405, 'Method not allowed', { Allow: 'POST' });
+    sendJsonRpcError(res, 405, errors.methodNotAllowed, { Allow: 'POST' });
     return;
   }
 
   try {
     await handleMcpRequest(createMcpServer, req, res);
   } catch (error) {
-    console.error('[HTTP Error]', error);
+    console.error(logs.httpError, error);
     if (!res.headersSent) {
-      sendJsonRpcError(res, 500, 'Internal server error');
+      sendJsonRpcError(res, 500, errors.internalServerError);
     }
   }
 }

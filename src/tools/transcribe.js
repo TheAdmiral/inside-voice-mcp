@@ -14,38 +14,25 @@ import {
   formatSpeakerSegments,
 } from '../utils/diarization-alignment.js';
 import { TranscribeOptionsSchema } from '../schemas.js';
+import { errors, logs, optionDescriptions, toolDescriptions } from '../strings.js';
 import { jsonResult } from './tool-result.js';
 
 const argsSchema = z.object({
-  audio_path: z.string().describe('Path to the audio file to transcribe'),
-  options: TranscribeOptionsSchema.prefault({}).describe('Transcription options'),
-  auto_convert: z
-    .boolean()
-    .default(true)
-    .describe('Automatically convert unsupported formats to WAV'),
+  audio_path: z.string().describe(optionDescriptions.audioPath),
+  options: TranscribeOptionsSchema.prefault({}).describe(optionDescriptions.options),
+  auto_convert: z.boolean().default(true).describe(optionDescriptions.autoConvert),
 });
 
 const HELP_TEXT = {
-  SETUP_ERROR: [
-    '',
-    '',
-    'Setup Help:',
-    '- Follow the Speaker Diarization Setup section of the README',
-    '- Store your HuggingFace token for Pyannote models: inside-voice-mcp setup-token',
-  ].join('\n'),
-  PROCESSING_ERROR: [
-    '',
-    '',
-    'This may be due to audio format issues or model loading problems.',
-    'Try with a different audio file or check your Python environment.',
-  ].join('\n'),
+  SETUP_ERROR: errors.diarizationSetupHelp,
+  PROCESSING_ERROR: errors.diarizationProcessingHelp,
 };
 
 async function findPythonOrThrow() {
   const python = await findDiarizationPython();
 
   if (!python) {
-    throw new DiarizationError('SETUP_ERROR', 'Speaker diarization requires uv (brew install uv).');
+    throw new DiarizationError('SETUP_ERROR', errors.uvNeeded);
   }
 
   return python;
@@ -75,7 +62,7 @@ async function transcribeWithSpeakers(audioPath, options, python) {
   // Alignment needs segment times, and only whisper's JSON output has them for every format.
   const transcription = await transcribe(audioPath, { ...options, output_format: 'json' });
 
-  console.error('[Diarization] Running speaker diarization...');
+  console.error(logs.diarizationStarting);
   const diarization = await runDiarization(python, {
     audioPath,
     minSpeakers: options.min_speakers,
@@ -106,7 +93,7 @@ async function handler({ audio_path, options, auto_convert }) {
 
   try {
     if (!existsSync(audio_path)) {
-      throw new Error(`Audio file not found: ${audio_path}`);
+      throw new Error(errors.audioFileNotFound(audio_path));
     }
 
     // Checked first, so that a missing setup fails before any time is spent transcribing.
@@ -130,7 +117,7 @@ async function handler({ audio_path, options, auto_convert }) {
     });
   } catch (error) {
     const helpText = error instanceof DiarizationError ? HELP_TEXT[error.code] : '';
-    throw new Error(`Transcription failed: ${error.message}${helpText}`);
+    throw new Error(errors.transcriptionFailed(error.message, helpText));
   } finally {
     if (tempFile) {
       await rm(tempFile, { force: true });
@@ -140,9 +127,7 @@ async function handler({ audio_path, options, auto_convert }) {
 
 export const transcribeTool = {
   name: 'transcribe',
-  description:
-    'Transcribe an audio file of any length to text using whisper.cpp, with automatic format ' +
-    'conversion and optional speaker identification',
+  description: toolDescriptions.transcribe,
   argsSchema,
   handler,
 };

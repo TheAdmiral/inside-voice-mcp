@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { checkInstallation } from '../whisper.js';
 import { DEFAULT_MODEL, getInstalledModels, getModelsDir, isVadModelInstalled } from '../models.js';
 import { findHuggingFaceToken } from '../utils/huggingface-auth.js';
+import { healthCheck, toolDescriptions } from '../strings.js';
 import { jsonResult } from './tool-result.js';
 
 // From least to most serious.
@@ -36,14 +37,14 @@ async function handler() {
 
   if (!installation.installed) {
     status = moreSerious(status, 'critical');
-    issues.push('whisper.cpp not installed or not in PATH');
-    recommendations.push('Install whisper.cpp: brew install whisper-cpp');
+    issues.push(healthCheck.whisperNotInstalled);
+    recommendations.push(healthCheck.installWhisper);
   }
 
   if (installedNames.length === 0) {
     status = moreSerious(status, 'warning');
-    issues.push('No whisper models found');
-    recommendations.push(`Install a model: inside-voice-mcp models install ${DEFAULT_MODEL}`);
+    issues.push(healthCheck.noModels);
+    recommendations.push(healthCheck.installModel(DEFAULT_MODEL));
   }
 
   // Only speaker diarization needs the HuggingFace token.
@@ -51,19 +52,14 @@ async function handler() {
     status = moreSerious(status, 'warning');
     issues.push(tokenProblem);
   } else if (!tokenSource) {
-    recommendations.push(
-      'For speaker diarization, store a HuggingFace token: inside-voice-mcp setup-token',
-    );
+    recommendations.push(healthCheck.storeToken);
   }
 
   if (!vadModelInstalled) {
-    recommendations.push(
-      'To skip silence, which is faster and more accurate, install the VAD model: ' +
-        'inside-voice-mcp models install vad',
-    );
+    recommendations.push(healthCheck.installVadModel);
   }
 
-  recommendations.push(`Recommended thread count: ${recommendedThreads}`);
+  recommendations.push(healthCheck.recommendedThreads(recommendedThreads));
 
   return jsonResult({
     status,
@@ -90,7 +86,7 @@ async function handler() {
 
 export const healthCheckTool = {
   name: 'health_check',
-  description: 'Check whisper.cpp installation and system configuration',
+  description: toolDescriptions.healthCheck,
   argsSchema: z.object({}),
   handler,
 };

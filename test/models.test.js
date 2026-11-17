@@ -17,6 +17,7 @@ import {
   isVadModelInstalled,
   modelsFromRepositoryFiles,
 } from '../src/models.js';
+import * as strings from '../src/strings.js';
 import { makeTempDir, restoreEnvironmentAfter } from './helpers.js';
 
 /** Points WHISPER_MODELS_PATH at an empty directory for the length of the test. */
@@ -103,12 +104,17 @@ test('regular models are the standard whisper models', () => {
 });
 
 test('quantised models are described by the model they came from', () => {
-  assert.match(describeModel('medium.en-q8_0'), /^medium\.en quantised to q8_0/);
-  assert.equal(describeModel('my-own-model'), 'Advanced model');
+  assert.equal(
+    describeModel('medium.en-q8_0'),
+    strings.modelDescriptions.quantised('medium.en', 'q8_0'),
+  );
+  assert.equal(describeModel('my-own-model'), strings.modelDescriptions.advanced);
 });
 
 test('a model path cannot lead outside the models directory', () => {
-  assert.throws(() => getModelPath('../secret'), /not a valid model name/);
+  assert.throws(() => getModelPath('../secret'), {
+    message: strings.errors.invalidModelName('../secret'),
+  });
 });
 
 test('installing a model downloads it into the models directory', async (t) => {
@@ -131,7 +137,9 @@ test('a failed download leaves nothing behind', async (t) => {
   const dir = useTemporaryModelsDir(t);
   fakeFetch(t, () => new Response('missing', { status: 404 }));
 
-  await assert.rejects(installModel('no-such-model'), /HTTP 404/);
+  await assert.rejects(installModel('no-such-model'), {
+    message: strings.errors.couldNotDownload('no-such-model', 404),
+  });
   assert.deepEqual(readdirSync(dir), []);
 });
 
@@ -147,7 +155,9 @@ test('deleting a model removes its file', async (t) => {
 test('deleting a model that is not installed fails', async (t) => {
   useTemporaryModelsDir(t);
 
-  await assert.rejects(deleteModel('tiny.en'), /tiny\.en is not installed/);
+  await assert.rejects(deleteModel('tiny.en'), {
+    message: strings.errors.notInstalled('tiny.en'),
+  });
 });
 
 test('sizes are shown in decimal units', () => {

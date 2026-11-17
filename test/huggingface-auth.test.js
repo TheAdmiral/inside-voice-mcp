@@ -3,6 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { platform } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import * as strings from '../src/strings.js';
 import { healthCheckTool } from '../src/tools/health-check.js';
 import {
   findHuggingFaceToken,
@@ -115,7 +116,7 @@ for (const mode of [0o640, 0o604, 0o644]) {
     const { token, problem } = await findHuggingFaceToken();
 
     assert.equal(token, null);
-    assert.match(problem, /chmod 600/);
+    assert.equal(problem, strings.errors.configFileTooOpen(getConfigPath()));
   });
 }
 
@@ -126,7 +127,7 @@ test('malformed config does not repeat the file contents', async (t) => {
   const { token, problem } = await findHuggingFaceToken();
 
   assert.equal(token, null);
-  assert.match(problem, /not valid JSON/);
+  assert.equal(problem, strings.errors.configFileNotJson(getConfigPath()));
   assert.doesNotMatch(problem, /secretvalue/);
 });
 
@@ -174,7 +175,9 @@ test('saving replaces an existing file that was too open', async (t) => {
 test('rejects text that could break out of the Keychain command', async (t) => {
   const { keychainPath } = setUpIsolatedHome(t);
 
-  await assert.rejects(saveHuggingFaceToken('abc"\ndelete-keychain'), /does not look like/);
+  await assert.rejects(saveHuggingFaceToken('abc"\ndelete-keychain'), {
+    message: strings.errors.notAHuggingFaceToken,
+  });
   assert.equal(existsSync(keychainPath), false);
   assert.equal(existsSync(getConfigPath()), false);
 });

@@ -15,6 +15,7 @@ import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import packageJson from '../package.json' with { type: 'json' };
 import { tools } from '../src/index.js';
+import { bundle } from '../src/strings.js';
 
 const projectDir = join(import.meta.dirname, '..');
 const buildDir = join(projectDir, 'build');
@@ -27,14 +28,10 @@ const repositoryUrl = 'https://github.com/TheAdmiral/inside-voice-mcp';
 const manifest = {
   manifest_version: '0.3',
   name: 'inside-voice',
-  display_name: 'Inside Voice',
+  display_name: bundle.displayName,
   version: packageJson.version,
-  description: 'Local speech-to-text with whisper.cpp, with optional speaker identification.',
-  long_description:
-    'Transcribes audio files on your Mac with whisper.cpp. Nothing is sent to the cloud.\n\n' +
-    'This extension starts the Inside Voice server installed by Homebrew. Install that first:\n\n' +
-    '    brew install TheAdmiral/tap/inside-voice\n' +
-    '    inside-voice-mcp models install base.en',
+  description: bundle.description,
+  long_description: bundle.longDescription,
   author: { name: 'TheAdmiral', url: 'https://github.com/TheAdmiral' },
   repository: { type: 'git', url: repositoryUrl },
   homepage: repositoryUrl,
@@ -67,4 +64,4 @@ copyFileSync(
 // -X leaves out macOS extended attributes, which Claude Desktop does not need.
 execFileSync('zip', ['-r', '-X', '-q', bundlePath, '.'], { cwd: bundleDir, stdio: 'inherit' });
 
-console.log(`Built ${bundlePath}`);
+console.log(bundle.built(bundlePath));

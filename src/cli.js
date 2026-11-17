@@ -7,17 +7,7 @@
  * commands are for setting up the server from a terminal, such as installing models.
  */
 
-const USAGE = `Inside Voice: local speech-to-text transcription for MCP clients.
-
-Usage:
-  inside-voice-mcp                     Start the MCP server over stdio, for MCP clients
-  inside-voice-mcp --http [--port N]   Start the MCP server on http://127.0.0.1:3700/mcp
-  inside-voice-mcp models [command]    List, install and delete whisper models
-  inside-voice-mcp setup-diarization   Download the speaker diarisation packages
-  inside-voice-mcp setup-token         Store a HuggingFace token for speaker diarisation
-  inside-voice-mcp help                Show this help
-
-Run inside-voice-mcp models help to see the model commands.`;
+import { cli, errors } from './strings.js';
 
 // Each command is loaded only when it is used, so starting the server loads nothing extra.
 const COMMANDS = {
@@ -32,7 +22,7 @@ async function main(args) {
   const [firstArg, ...restOfArgs] = args;
 
   if (HELP_ARGS.includes(firstArg)) {
-    console.log(USAGE);
+    console.log(cli.usage);
     return;
   }
 
@@ -45,7 +35,7 @@ async function main(args) {
 
   const loadCommand = COMMANDS[firstArg];
   if (!loadCommand) {
-    console.error(`Unknown command: ${firstArg}\n\n${USAGE}`);
+    console.error(errors.unknownCommand(firstArg, cli.usage));
     process.exitCode = 1;
     return;
   }

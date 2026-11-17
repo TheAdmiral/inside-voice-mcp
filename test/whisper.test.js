@@ -9,15 +9,18 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { getModelsDir } from '../src/models.js';
 import { TranscribeOptionsSchema } from '../src/schemas.js';
+import * as strings from '../src/strings.js';
 import {
   buildVocabularyPrompt,
   buildWhisperArgs,
   checkVocabulary,
+  MAX_PROMPT_TOKENS,
   parseWhisperJson,
   transcribe,
 } from '../src/whisper.js';
-import { installFakeWhisper } from './helpers.js';
+import { installFakeWhisper, messagePattern } from './helpers.js';
 
 const options = (overrides = {}) => TranscribeOptionsSchema.parse(overrides);
 
@@ -161,10 +164,9 @@ test('an installed advanced model can be used', async (t) => {
 test('a model that is not installed says how to install it', async (t) => {
   const { audioPath } = setUpFakeWhisper(t);
 
-  await assert.rejects(
-    transcribe(audioPath, options({ model: 'small.en' })),
-    /not installed.*inside-voice-mcp models install small\.en/,
-  );
+  await assert.rejects(transcribe(audioPath, options({ model: 'small.en' })), {
+    message: strings.errors.modelNotInstalled('small.en', getModelsDir()),
+  });
 });
 
 test('txt transcription returns the plain text file, without timestamps', async (t) => {
@@ -178,7 +180,9 @@ test('txt transcription returns the plain text file, without timestamps', async 
 test('a failed transcription leaves no files behind', async (t) => {
   const { audioDir, audioPath, recordPath } = setUpFakeWhisper(t, { exitCode: 1 });
 
-  await assert.rejects(transcribe(audioPath, options({ model: 'tiny.en' })), /Whisper process/);
+  await assert.rejects(transcribe(audioPath, options({ model: 'tiny.en' })), {
+    message: messagePattern(strings.errors.whisperFailed),
+  });
 
   assert.deepEqual(readdirSync(audioDir), ['sample.wav']);
   assert.equal(existsSync(`${readFileSync(recordPath, 'utf-8')}.txt`), false);
@@ -318,10 +322,9 @@ test('vad false turns VAD off even when it is installed', async (t) => {
 test('vad true without the VAD model says how to install it', async (t) => {
   const { audioPath } = setUpFakeWhisper(t);
 
-  await assert.rejects(
-    transcribe(audioPath, options({ model: 'tiny.en', vad: true })),
-    /VAD model is not installed.*inside-voice-mcp models install vad/,
-  );
+  await assert.rejects(transcribe(audioPath, options({ model: 'tiny.en', vad: true })), {
+    message: strings.errors.vadModelNeeded,
+  });
 });
 
 test('builds a sentence from the vocabulary', () => {
@@ -354,7 +357,9 @@ test('warns when the vocabulary is too long for whisper', () => {
   const longVocabulary = Array.from({ length: 200 }, (_, index) => `Term${index}`);
 
   assert.deepEqual(checkVocabulary(['Kubernetes', 'PostgreSQL']), []);
-  assert.match(checkVocabulary(longVocabulary)[0], /vocabulary may be too long/);
+  assert.deepEqual(checkVocabulary(longVocabulary), [
+    strings.warnings.vocabularyTooLong(MAX_PROMPT_TOKENS),
+  ]);
 });
 
 test('a transcription reports the vocabulary warnings', async (t) => {

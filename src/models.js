@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { errors, modelDescriptions } from './strings.js';
 
 // Every model comes from this Hugging Face repository.
 const REPOSITORY = 'ggerganov/whisper.cpp';
@@ -24,98 +25,30 @@ const VAD_MODEL_URL = `https://huggingface.co/ggml-org/whisper-vad/resolve/main/
 export const VAD_MODEL_NAME = 'vad';
 export const VAD_MODEL_SIZE_BYTES = 885_098;
 
+const ENGLISH_ONLY = ['en'];
+const MULTILINGUAL = [modelDescriptions.multilingualLanguages];
+
 /**
  * The regular models, which are the standard whisper models, from smallest to largest.
  * Anything else in the repository, such as a quantised version of one of these, is an
  * advanced model.
  * Ratings go from 1 to 5. For speed 5 is fastest, for accuracy 5 is most accurate.
+ * Each model's description is in strings.js.
  */
 export const REGULAR_MODELS = [
-  {
-    name: 'tiny.en',
-    description: 'Smallest English-only model, fastest processing',
-    languages: ['en'],
-    speed_rating: 5,
-    accuracy_rating: 2,
-  },
-  {
-    name: 'tiny',
-    description: 'Smallest multilingual model, fastest processing',
-    languages: ['99 languages'],
-    speed_rating: 5,
-    accuracy_rating: 2,
-  },
-  {
-    name: 'base.en',
-    description: 'Balanced English-only model, good speed/accuracy trade-off',
-    languages: ['en'],
-    speed_rating: 4,
-    accuracy_rating: 3,
-  },
-  {
-    name: 'base',
-    description: 'Balanced multilingual model, good speed/accuracy trade-off',
-    languages: ['99 languages'],
-    speed_rating: 4,
-    accuracy_rating: 3,
-  },
-  {
-    name: 'small.en',
-    description: 'Higher accuracy English-only model',
-    languages: ['en'],
-    speed_rating: 3,
-    accuracy_rating: 4,
-  },
-  {
-    name: 'small',
-    description: 'Higher accuracy multilingual model',
-    languages: ['99 languages'],
-    speed_rating: 3,
-    accuracy_rating: 4,
-  },
-  {
-    name: 'medium.en',
-    description: 'High accuracy English-only model, slower and larger',
-    languages: ['en'],
-    speed_rating: 2,
-    accuracy_rating: 4,
-  },
-  {
-    name: 'medium',
-    description: 'High accuracy multilingual model, slower and larger',
-    languages: ['99 languages'],
-    speed_rating: 2,
-    accuracy_rating: 4,
-  },
-  {
-    name: 'large-v1',
-    description: 'First large multilingual model, replaced by large-v2 and large-v3',
-    languages: ['99 languages'],
-    speed_rating: 1,
-    accuracy_rating: 4,
-  },
-  {
-    name: 'large-v2',
-    description: 'Large multilingual model, very accurate but slow',
-    languages: ['99 languages'],
-    speed_rating: 1,
-    accuracy_rating: 5,
-  },
-  {
-    name: 'large-v3',
-    description: 'Latest large multilingual model, the most accurate and the slowest',
-    languages: ['99 languages'],
-    speed_rating: 1,
-    accuracy_rating: 5,
-  },
-  {
-    name: 'large-v3-turbo',
-    description: 'Much faster version of large-v3, nearly as accurate',
-    languages: ['99 languages'],
-    speed_rating: 2,
-    accuracy_rating: 5,
-  },
-];
+  { name: 'tiny.en', languages: ENGLISH_ONLY, speed_rating: 5, accuracy_rating: 2 },
+  { name: 'tiny', languages: MULTILINGUAL, speed_rating: 5, accuracy_rating: 2 },
+  { name: 'base.en', languages: ENGLISH_ONLY, speed_rating: 4, accuracy_rating: 3 },
+  { name: 'base', languages: MULTILINGUAL, speed_rating: 4, accuracy_rating: 3 },
+  { name: 'small.en', languages: ENGLISH_ONLY, speed_rating: 3, accuracy_rating: 4 },
+  { name: 'small', languages: MULTILINGUAL, speed_rating: 3, accuracy_rating: 4 },
+  { name: 'medium.en', languages: ENGLISH_ONLY, speed_rating: 2, accuracy_rating: 4 },
+  { name: 'medium', languages: MULTILINGUAL, speed_rating: 2, accuracy_rating: 4 },
+  { name: 'large-v1', languages: MULTILINGUAL, speed_rating: 1, accuracy_rating: 4 },
+  { name: 'large-v2', languages: MULTILINGUAL, speed_rating: 1, accuracy_rating: 5 },
+  { name: 'large-v3', languages: MULTILINGUAL, speed_rating: 1, accuracy_rating: 5 },
+  { name: 'large-v3-turbo', languages: MULTILINGUAL, speed_rating: 2, accuracy_rating: 5 },
+].map((model) => ({ ...model, description: modelDescriptions.regular[model.name] }));
 
 export const REGULAR_MODEL_NAMES = REGULAR_MODELS.map((model) => model.name);
 
@@ -149,16 +82,16 @@ export function describeModel(name) {
   }
 
   if (name === RECOMMENDED_ACCURATE_MODEL) {
-    return 'large-v3-turbo quantised to q8_0: recommended for accuracy, faster and smaller than large-v3';
+    return modelDescriptions.recommendedAccurate;
   }
 
   const quantised = name.match(QUANTISED_NAME_PATTERN);
   if (quantised) {
     const [, baseModel, quantisation] = quantised;
-    return `${baseModel} quantised to ${quantisation}: smaller, uses less memory, slightly less accurate`;
+    return modelDescriptions.quantised(baseModel, quantisation);
   }
 
-  return 'Advanced model';
+  return modelDescriptions.advanced;
 }
 
 /** Returns the directory whisper models are stored in. */
@@ -186,7 +119,7 @@ function modelNameFromFileName(fileName) {
 
 export function getModelPath(name) {
   if (!MODEL_NAME_PATTERN.test(name)) {
-    throw new Error(`'${name}' is not a valid model name`);
+    throw new Error(errors.invalidModelName(name));
   }
 
   return join(getModelsDir(), modelFileName(name));
@@ -282,11 +215,11 @@ export async function fetchOnlineModels() {
   try {
     response = await fetch(FILE_LIST_URL);
   } catch (error) {
-    throw new Error(`Could not reach Hugging Face to list the models: ${error.message}`);
+    throw new Error(errors.couldNotReachHuggingFace(error.message));
   }
 
   if (!response.ok) {
-    throw new Error(`Could not list the models on Hugging Face: HTTP ${response.status}`);
+    throw new Error(errors.couldNotListModels(response.status));
   }
 
   return modelsFromRepositoryFiles(await response.json());
@@ -300,7 +233,7 @@ export async function fetchOnlineModels() {
 async function downloadFile(url, destinationPath, description, onProgress) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Could not download ${description}: HTTP ${response.status}`);
+    throw new Error(errors.couldNotDownload(description, response.status));
   }
 
   const totalBytes = Number(response.headers.get('content-length')) || null;
@@ -338,13 +271,13 @@ export async function installModel(name, onProgress = () => {}) {
 
 /** Downloads the VAD model, replacing any installed copy. */
 export async function installVadModel(onProgress = () => {}) {
-  await downloadFile(VAD_MODEL_URL, getVadModelPath(), 'the VAD model', onProgress);
+  await downloadFile(VAD_MODEL_URL, getVadModelPath(), errors.theVadModel, onProgress);
 }
 
 export async function deleteModel(name) {
   const modelPath = getModelPath(name);
   if (!existsSync(modelPath)) {
-    throw new Error(`${name} is not installed`);
+    throw new Error(errors.notInstalled(name));
   }
 
   await rm(modelPath);
@@ -352,7 +285,7 @@ export async function deleteModel(name) {
 
 export async function deleteVadModel() {
   if (!isVadModelInstalled()) {
-    throw new Error('The VAD model is not installed');
+    throw new Error(errors.vadModelNotInstalled);
   }
 
   await rm(getVadModelPath());

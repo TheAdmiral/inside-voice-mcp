@@ -6,6 +6,7 @@
 - Use as few dependencies as is reasonable.
 - Write JavaScript compatible with Node 24 wherever possible.
 - Do not use TypeScript.
+- Put all the text people see in `src/strings.js`: tool and option descriptions, tool output, error and log messages, and command output. `test/strings.test.js` fails when text is written anywhere else in `src/` or `scripts/`.
 
 ## Documentation
 

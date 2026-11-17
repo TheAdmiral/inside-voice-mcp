@@ -14,25 +14,9 @@ import {
   VAD_MODEL_NAME,
   VAD_MODEL_SIZE_BYTES,
 } from '../src/models.js';
+import { errors, modelManager } from '../src/strings.js';
 
-const USAGE = `Manage the whisper models Inside Voice uses.
-
-Usage: inside-voice-mcp models [command]
-
-Commands:
-  list                 Show the installed models (the default)
-  available            Show every model you can install, with its size
-  install [model...]   Install models, or choose them from a list
-  delete [model...]    Delete models, or choose them from a list
-  help                 Show this help
-
-Regular models are the standard whisper models. Advanced models are quantised versions of
-them, which are smaller and use less memory but are slightly less accurate. large-v3-turbo-q8_0
-is recommended for accuracy.
-
-The VAD model, called ${VAD_MODEL_NAME}, lets whisper skip the parts without speech, which is
-faster and avoids made-up text in silences. It is installed along with any whisper model,
-or on its own with: inside-voice-mcp models install ${VAD_MODEL_NAME}`;
+const USAGE = modelManager.usage(VAD_MODEL_NAME);
 
 // One reader is shared by every question, because a reader takes all the input available,
 // which can include answers to later questions when they are piped in.
@@ -68,7 +52,9 @@ function printModels(models, { numbered = false, installedNames = [] } = {}) {
 
   let currentHeading = null;
   for (const [index, model] of models.entries()) {
-    const heading = isRegularModel(model.name) ? 'Regular models' : 'Advanced models';
+    const heading = isRegularModel(model.name)
+      ? modelManager.regularModelsHeading
+      : modelManager.advancedModelsHeading;
     if (heading !== currentHeading) {
       console.log(`\n${heading}`);
       currentHeading = heading;
@@ -81,7 +67,8 @@ function printModels(models, { numbered = false, installedNames = [] } = {}) {
     columns.push(model.name.padEnd(nameWidth));
     columns.push(formatSize(model.size_bytes).padStart(7));
     if (showInstalled) {
-      columns.push(installedNames.includes(model.name) ? 'installed' : '         ');
+      const mark = installedNames.includes(model.name) ? modelManager.installedMark : '';
+      columns.push(mark.padEnd(modelManager.installedMark.length));
     }
     columns.push(describeModel(model.name));
 
@@ -91,26 +78,26 @@ function printModels(models, { numbered = false, installedNames = [] } = {}) {
 
 function printVadModel() {
   const status = isVadModelInstalled()
-    ? 'installed'
-    : `install it with: inside-voice-mcp models install ${VAD_MODEL_NAME}`;
+    ? modelManager.vadModelInstalledStatus
+    : modelManager.vadModelInstallStatus(VAD_MODEL_NAME);
 
-  console.log('\nVoice activity detection');
-  console.log(
-    `  ${VAD_MODEL_NAME}  ${formatSize(VAD_MODEL_SIZE_BYTES)}  Lets whisper skip silence, ${status}`,
-  );
+  console.log(`\n${modelManager.vadModelHeading}`);
+  const size = formatSize(VAD_MODEL_SIZE_BYTES);
+  console.log(`  ${VAD_MODEL_NAME}  ${size}  ${modelManager.vadModelDescription(status)}`);
 }
 
-/** Asks for numbers from a printed list, and returns the models they stand for. */
-async function chooseModels(models, action) {
-  const answer = await ask(
-    `\nType the numbers of the models to ${action}, separated by spaces, or press Enter to cancel: `,
-  );
+/**
+ * Asks `question` about a printed list of numbered models, and returns the models whose
+ * numbers are typed.
+ */
+async function chooseModels(models, question) {
+  const answer = await ask(`\n${question}`);
 
   const chosen = [];
   for (const text of answer.split(/[\s,]+/).filter(Boolean)) {
     const number = Number(text);
     if (!Number.isInteger(number) || number < 1 || number > models.length) {
-      throw new Error(`${text} is not one of the numbers in the list.`);
+      throw new Error(modelManager.notANumberInTheList(text));
     }
 
     const model = models[number - 1];
@@ -135,14 +122,14 @@ function findModelsByName(models, names, describeMissing) {
 
 function showInstalled() {
   const installed = getInstalledModels();
-  console.log(`Models in ${getModelsDir()}`);
+  console.log(modelManager.modelsIn(getModelsDir()));
 
   if (installed.length === 0) {
-    console.log('\nNo models are installed. Run the install command to choose some.');
+    console.log(`\n${modelManager.noModelsInstalled}`);
   } else {
     printModels(installed);
     const totalBytes = installed.reduce((total, model) => total + model.size_bytes, 0);
-    console.log(`\nTotal: ${formatSize(totalBytes)}`);
+    console.log(`\n${modelManager.total(formatSize(totalBytes))}`);
   }
 
   printVadModel();
@@ -152,13 +139,13 @@ async function showAvailable() {
   const online = await fetchOnlineModels();
   const installedNames = getInstalledModels().map((model) => model.name);
 
-  console.log('Models you can install from Hugging Face');
+  console.log(modelManager.modelsYouCanInstall);
   printModels(online, { installedNames });
   printVadModel();
 }
 
 async function downloadWithProgress(model) {
-  console.log(`Downloading ${model.name} (${formatSize(model.size_bytes)})`);
+  console.log(modelManager.downloading(model.name, formatSize(model.size_bytes)));
 
   // Progress overwrites one line, which only makes sense in a terminal.
   let shownPercent = -1;
@@ -184,34 +171,38 @@ async function downloadWithProgress(model) {
     }
   }
 
-  console.log(`Installed ${model.name}`);
+  console.log(modelManager.installed(model.name));
 }
 
 async function installVad() {
   if (isVadModelInstalled()) {
-    console.log(`${VAD_MODEL_NAME} is already installed`);
+    console.log(modelManager.alreadyInstalled(VAD_MODEL_NAME));
     return;
   }
 
-  console.log(`Downloading ${VAD_MODEL_NAME} (${formatSize(VAD_MODEL_SIZE_BYTES)})`);
+  console.log(modelManager.downloading(VAD_MODEL_NAME, formatSize(VAD_MODEL_SIZE_BYTES)));
   await installVadModel();
-  console.log(`Installed ${VAD_MODEL_NAME}`);
+  console.log(modelManager.installed(VAD_MODEL_NAME));
+}
+
+function isConfirmed(answer) {
+  return answer.trim().toLowerCase() === modelManager.confirmAnswer;
 }
 
 async function deleteVad() {
   if (!isVadModelInstalled()) {
-    console.log(`${VAD_MODEL_NAME} is not installed`);
+    console.log(modelManager.vadModelNotInstalled(VAD_MODEL_NAME));
     return;
   }
 
-  const answer = await ask(`Delete ${VAD_MODEL_NAME}? Type y to confirm: `);
-  if (answer.trim().toLowerCase() !== 'y') {
-    console.log(`${VAD_MODEL_NAME} was not deleted.`);
+  const answer = await ask(modelManager.confirmDelete(VAD_MODEL_NAME));
+  if (!isConfirmed(answer)) {
+    console.log(modelManager.notDeleted(VAD_MODEL_NAME));
     return;
   }
 
   await deleteVadModel();
-  console.log(`Deleted ${VAD_MODEL_NAME}`);
+  console.log(modelManager.deleted(VAD_MODEL_NAME));
 }
 
 /** Removes the VAD model's name from `names`, and says whether it was there. */
@@ -239,25 +230,21 @@ async function installModels(names) {
 
   let chosen;
   if (names.length > 0) {
-    chosen = findModelsByName(
-      online,
-      names,
-      (name) => `There is no model called ${name}. The available command lists every model.`,
-    );
+    chosen = findModelsByName(online, names, modelManager.noModelCalled);
   } else {
-    console.log('Models you can install from Hugging Face');
+    console.log(modelManager.modelsYouCanInstall);
     printModels(online, { numbered: true, installedNames });
-    chosen = await chooseModels(online, 'install');
+    chosen = await chooseModels(online, modelManager.chooseModelsToInstall);
   }
 
   if (chosen.length === 0) {
-    console.log('Nothing was installed.');
+    console.log(modelManager.nothingInstalled);
     return;
   }
 
   for (const model of chosen) {
     if (installedNames.includes(model.name)) {
-      console.log(`${model.name} is already installed`);
+      console.log(modelManager.alreadyInstalled(model.name));
     } else {
       await downloadWithProgress(model);
     }
@@ -265,7 +252,7 @@ async function installModels(names) {
 
   // The VAD model is under 1 MB and makes every transcription better, so it comes along.
   if (!isVadModelInstalled()) {
-    console.log('Also installing the VAD model, which lets whisper skip silence');
+    console.log(modelManager.alsoInstallingVadModel);
     await installVad();
   }
 }
@@ -280,34 +267,34 @@ async function deleteModels(names) {
 
   const installed = getInstalledModels();
   if (installed.length === 0) {
-    console.log(`No models are installed in ${getModelsDir()}`);
+    console.log(modelManager.noModelsInstalledIn(getModelsDir()));
     return;
   }
 
   let chosen;
   if (names.length > 0) {
-    chosen = findModelsByName(installed, names, (name) => `${name} is not installed.`);
+    chosen = findModelsByName(installed, names, modelManager.modelNotInstalled);
   } else {
-    console.log(`Models in ${getModelsDir()}`);
+    console.log(modelManager.modelsIn(getModelsDir()));
     printModels(installed, { numbered: true });
-    chosen = await chooseModels(installed, 'delete');
+    chosen = await chooseModels(installed, modelManager.chooseModelsToDelete);
   }
 
   if (chosen.length === 0) {
-    console.log('Nothing was deleted.');
+    console.log(modelManager.nothingDeleted);
     return;
   }
 
   const summary = chosen.map((model) => `${model.name} (${formatSize(model.size_bytes)})`);
-  const answer = await ask(`Delete ${summary.join(', ')}? Type y to confirm: `);
-  if (answer.trim().toLowerCase() !== 'y') {
-    console.log('Nothing was deleted.');
+  const answer = await ask(modelManager.confirmDelete(summary.join(', ')));
+  if (!isConfirmed(answer)) {
+    console.log(modelManager.nothingDeleted);
     return;
   }
 
   for (const model of chosen) {
     await deleteModel(model.name);
-    console.log(`Deleted ${model.name}`);
+    console.log(modelManager.deleted(model.name));
   }
 }
 
@@ -329,7 +316,7 @@ export async function run(args) {
 
   try {
     if (!command) {
-      throw new Error(`Unknown command: ${commandName}\n\n${USAGE}`);
+      throw new Error(errors.unknownCommand(commandName, USAGE));
     }
 
     await command(modelNames);

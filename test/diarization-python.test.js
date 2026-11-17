@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import * as strings from '../src/strings.js';
 import { findDiarizationPython, runDiarization } from '../src/utils/diarization-python.js';
 import { makeTempDir, restoreEnvironmentAfter, writeExecutable } from './helpers.js';
 
@@ -74,10 +75,9 @@ test('a script error without a code is a processing error', async (t) => {
 test('a crash with no JSON reports stderr', async (t) => {
   const python = writeFailingPython(t, 'echo "Segmentation fault" >&2');
 
-  await assert.rejects(
-    runDiarization(python, { ...params, useMps: false }),
-    /exit code 1\): Segmentation fault/,
-  );
+  await assert.rejects(runDiarization(python, { ...params, useMps: false }), {
+    message: strings.errors.diarizationScriptFailed(1, 'Segmentation fault\n'),
+  });
 });
 
 test('passes the HuggingFace token to the script', async (t) => {

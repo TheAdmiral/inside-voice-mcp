@@ -9,6 +9,7 @@ import {
   getInstalledModels,
   getModelsDir,
 } from '../models.js';
+import { listModels, toolDescriptions } from '../strings.js';
 import { jsonResult } from './tool-result.js';
 
 /** A regular model's details, apart from its name, which the listing already gives as model. */
@@ -50,7 +51,7 @@ function describeMissingModel(regularModel) {
     available: false,
     type: 'regular',
     ...regularModelDetails(regularModel),
-    download_note: `Install with the model manager: inside-voice-mcp models install ${regularModel.name}`,
+    download_note: listModels.downloadNote(regularModel.name),
   };
 }
 
@@ -74,19 +75,15 @@ async function handler() {
       fast_and_accurate: RECOMMENDED_ACCURATE_MODEL,
     },
     download_instructions: {
-      model_manager:
-        'Run inside-voice-mcp models available to see every model with its size, including ' +
-        'advanced models, then inside-voice-mcp models install <model>',
-      models_directory: `Models are stored in: ${getModelsDir()}`,
+      model_manager: listModels.modelManagerInstructions,
+      models_directory: listModels.modelsDirectory(getModelsDir()),
     },
   });
 }
 
 export const listModelsTool = {
   name: 'list_models',
-  description:
-    'List installed whisper models, and the regular models that are not installed, with ' +
-    'sizes and performance recommendations',
+  description: toolDescriptions.listModels,
   argsSchema: z.object({}),
   handler,
 };

@@ -25,6 +25,7 @@ import {
 import { z } from 'zod';
 import packageJson from '../package.json' with { type: 'json' };
 import { httpServerUrl, startHttpServer } from './http-server.js';
+import { errors, logs } from './strings.js';
 import { healthCheckTool } from './tools/health-check.js';
 import { listModelsTool } from './tools/list-models.js';
 import { transcribeTool } from './tools/transcribe.js';
@@ -42,7 +43,7 @@ export function createServer() {
     { capabilities: { tools: {} } },
   );
 
-  server.onerror = (error) => console.error('[MCP Error]', error);
+  server.onerror = (error) => console.error(logs.mcpError, error);
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: tools.map((tool) => ({
@@ -56,7 +57,7 @@ export function createServer() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const tool = toolsByName.get(request.params.name);
     if (!tool) {
-      throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
+      throw new McpError(ErrorCode.MethodNotFound, errors.unknownTool(request.params.name));
     }
 
     const parsed = tool.argsSchema.safeParse(request.params.arguments ?? {});
@@ -67,7 +68,7 @@ export function createServer() {
     try {
       return await tool.handler(parsed.data);
     } catch (error) {
-      throw new McpError(ErrorCode.InternalError, `Tool execution failed: ${error.message}`);
+      throw new McpError(ErrorCode.InternalError, errors.toolFailed(error.message));
     }
   });
 
@@ -85,15 +86,13 @@ function readOptions(args) {
 
   // The port is only for HTTP, so on its own it is a mistake rather than a request for HTTP.
   if (values.port !== undefined && !values.http) {
-    throw new Error(
-      `--port only works with --http, as in: inside-voice-mcp --http --port ${values.port}`,
-    );
+    throw new Error(errors.portWithoutHttp(values.port));
   }
 
   const port = values.port === undefined ? DEFAULT_HTTP_PORT : Number(values.port);
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`--port must be a whole number from 1 to 65535, not "${values.port}"`);
+    throw new Error(errors.invalidPort(values.port));
   }
 
   return { useHttp: values.http, port };
@@ -102,16 +101,16 @@ function readOptions(args) {
 async function runOverStdio() {
   const server = createServer();
   await server.connect(new StdioServerTransport());
-  console.error('Inside Voice MCP server running on stdio');
+  console.error(logs.runningOnStdio);
 }
 
 async function runOverHttp(port) {
   try {
     const httpServer = await startHttpServer(createServer, port);
-    console.error(`Inside Voice MCP server running at ${httpServerUrl(httpServer)}`);
+    console.error(logs.runningAt(httpServerUrl(httpServer)));
   } catch (error) {
     if (error.code === 'EADDRINUSE') {
-      throw new Error(`Port ${port} is already in use. Choose another with --http --port <number>`);
+      throw new Error(errors.portInUse(port));
     }
     throw error;
   }
@@ -122,12 +121,12 @@ export async function startServer(args) {
   const { useHttp, port } = readOptions(args);
 
   process.on('uncaughtException', (error) => {
-    console.error('Uncaught exception:', error);
+    console.error(logs.uncaughtException, error);
     process.exit(1);
   });
 
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled rejection at:', promise, 'reason:', reason);
+    console.error(logs.unhandledRejectionAt, promise, logs.unhandledRejectionReason, reason);
     process.exit(1);
   });
 
@@ -140,7 +139,7 @@ export async function startServer(args) {
 
 if (import.meta.main) {
   startServer(process.argv.slice(2)).catch((error) => {
-    console.error('Server startup failed:', error.message);
+    console.error(logs.startupFailed, error.message);
     process.exit(1);
   });
 }

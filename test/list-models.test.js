@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { REGULAR_MODEL_NAMES } from '../src/models.js';
+import * as strings from '../src/strings.js';
 import { listModelsTool } from '../src/tools/list-models.js';
 import { makeTempDir, restoreEnvironmentAfter } from './helpers.js';
 
@@ -33,7 +34,7 @@ test('installed models are listed with their size and type', async (t) => {
 
   assert.equal(advanced.model, 'base.en-q5_1');
   assert.equal(advanced.type, 'advanced');
-  assert.match(advanced.description, /quantised/);
+  assert.equal(advanced.description, strings.modelDescriptions.quantised('base.en', 'q5_1'));
 });
 
 test('every regular model that is not installed is listed as not downloaded', async (t) => {
@@ -44,14 +45,17 @@ test('every regular model that is not installed is listed as not downloaded', as
     notDownloaded,
     REGULAR_MODEL_NAMES.filter((name) => name !== 'tiny.en'),
   );
-  assert.match(result.not_downloaded[0].download_note, /inside-voice-mcp models install tiny$/);
+  assert.equal(result.not_downloaded[0].download_note, strings.listModels.downloadNote('tiny'));
 });
 
 test('recommends large-v3-turbo-q8_0 for accuracy', async (t) => {
   const result = await listModels(t, { 'ggml-large-v3-turbo-q8_0.bin': '' });
 
   assert.equal(result.recommended_for_accuracy, 'large-v3-turbo-q8_0');
-  assert.match(result.available_models[0].description, /recommended for accuracy/);
+  assert.equal(
+    result.available_models[0].description,
+    strings.modelDescriptions.recommendedAccurate,
+  );
 });
 
 test('gives each model its name once, as model', async (t) => {

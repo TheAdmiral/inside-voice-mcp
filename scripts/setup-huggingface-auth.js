@@ -6,6 +6,7 @@
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import { parseArgs } from 'node:util';
+import { setup } from '../src/strings.js';
 import {
   findHuggingFaceToken,
   getConfigPath,
@@ -39,20 +40,19 @@ function askForHiddenInput(question) {
 
 async function reportSavedLocation(location, useKeychain) {
   if (location === 'keychain') {
-    console.log('Saved your HuggingFace token to the macOS Keychain.');
+    console.log(setup.savedToKeychain);
     return;
   }
 
   if (useKeychain) {
-    console.log('The macOS Keychain was not available.');
+    console.log(setup.keychainUnavailable);
   }
-  console.log(`Saved your HuggingFace token to ${getConfigPath()}, readable only by you.`);
+  console.log(setup.savedToFile(getConfigPath()));
 
   // The server reads the Keychain before the file, so an older Keychain token would still win.
   const { source } = await findHuggingFaceToken();
   if (source === 'keychain') {
-    console.log('A token in the Keychain is still used instead. Remove it with:');
-    console.log('  security delete-generic-password -s inside-voice-mcp -a HF_TOKEN');
+    console.log(setup.keychainTokenStillUsed);
   }
 }
 
@@ -65,11 +65,11 @@ export async function run(args) {
     });
     const useKeychain = !values.file;
 
-    const token = (await askForHiddenInput('HuggingFace token (input is hidden): ')).trim();
+    const token = (await askForHiddenInput(setup.tokenPrompt)).trim();
     process.stdout.write('\n');
 
     if (!token) {
-      throw new Error('No token entered, so nothing was saved.');
+      throw new Error(setup.noTokenEntered);
     }
 
     const location = await saveHuggingFaceToken(token, { useKeychain });

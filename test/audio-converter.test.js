@@ -3,8 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import * as strings from '../src/strings.js';
 import { convertToWav, isWhisperCompatible, prepareAudio } from '../src/utils/audio-converter.js';
-import { makeTempDir, restoreEnvironmentAfter } from './helpers.js';
+import { makeTempDir, messagePattern, restoreEnvironmentAfter } from './helpers.js';
 
 const SAMPLE_WAV = join(import.meta.dirname, 'fixtures', 'sample_meeting_40_seconds.wav');
 
@@ -57,5 +58,7 @@ test('suggests ffmpeg when macOS cannot read the file', async (t) => {
 
   hideFfmpeg(t);
 
-  await assert.rejects(convertToWav(unreadablePath), /install ffmpeg with: brew install ffmpeg/);
+  await assert.rejects(convertToWav(unreadablePath), {
+    message: messagePattern(strings.errors.macOsCouldNotRead),
+  });
 });
